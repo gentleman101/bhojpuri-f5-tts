@@ -79,6 +79,7 @@ def main():
     parser.add_argument("--processed-dir", default="data/processed/syspin_24k")
     parser.add_argument("--name", required=True, help="Manifest set name, e.g. syspin_slice or syspin_full")
     parser.add_argument("--train-hours-per-speaker", type=float, default=None, help="Omit to use everything")
+    parser.add_argument("--exclude-file", help="utt_ids (one per line) to force into test and never train on")
     parser.add_argument("--val-per-speaker", type=int, default=50)
     parser.add_argument("--test-per-speaker", type=int, default=50)
     parser.add_argument("--min-duration", type=float, default=1.0)
@@ -94,15 +95,22 @@ def main():
     out_dir = REPO_ROOT / "manifests" / args.name
     rng = random.Random(args.seed)
 
+    excluded = set()
+    if args.exclude_file:
+        excluded = {line.strip() for line in open(REPO_ROOT / args.exclude_file, encoding="utf-8") if line.strip()}
+        print(f"Forcing {len(excluded)} clip(s) into the test split")
+
     splits = {"train": [], "val": [], "test": []}
     for speaker, corpus_dir in discover_speakers(syspin_root).items():
         items = load_items(speaker, corpus_dir)
         for item in items:
             item["src_duration"] = sf.info(item["src"]).duration
         items = [x for x in items if args.min_duration <= x["src_duration"] <= args.max_duration + 1.0]
+        forced = [x for x in items if x["utt_id"] in excluded]
+        items = [x for x in items if x["utt_id"] not in excluded]
         rng.shuffle(items)
         n_test, n_val = args.test_per_speaker, args.val_per_speaker
-        splits["test"] += items[:n_test]
+        splits["test"] += forced + items[:n_test]
         splits["val"] += items[n_test : n_test + n_val]
         train, budget = [], (args.train_hours_per_speaker or float("inf")) * 3600
         for item in items[n_test + n_val :]:
@@ -111,7 +119,7 @@ def main():
             train.append(item)
             budget -= item["src_duration"]
         splits["train"] += train
-        print(f"{speaker}: {len(items)} usable clips, train {len(train)}, val {n_val}, test {n_test}")
+        print(f"{speaker}: {len(items)} usable clips, train {len(train)}, val {n_val}, test {n_test + len(forced)}")
 
     all_items = [item for rows in splits.values() for item in rows]
     for item in all_items:

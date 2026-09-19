@@ -1,0 +1,310 @@
+{
+ "refs": {
+  "bho_f": {
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_AGRI_00101.wav",
+   "text": "मछरी पकड़ऽ के उद्योग में मछरिन के पकड़ऽ खरीदऽ बेचऽ के काम होला",
+   "duration": 6.0,
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_AGRI_00101",
+   "domain": "AGRICULTURE"
+  },
+  "bho_m": {
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_00992.wav",
+   "text": "शत्रु अउर मित्र कीट के अनुपात कम रहले पर पेस्टीसाइड के प्रयोग न करे के चाही",
+   "duration": 6.0,
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_00992",
+   "domain": "AGRICULTURE"
+  }
+ },
+ "items": [
+  {
+   "category": "v_to_b",
+   "note": "व often spoken as ब (विकास -> बिकास)",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_AGRI_00008",
+   "text": "पौधा व जंतु के स्पीशीज़ जे कउनो विशेष क्षेत्र में विशिष्ट रूप से पावल जाला जेके विशेष क्षेत्री स्पीशीज़ भी कहल जाला",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_AGRI_00008.wav",
+   "duration": 9.14
+  },
+  {
+   "category": "v_to_b",
+   "note": "व often spoken as ब (विकास -> बिकास)",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_AGRI_00638",
+   "text": "एसिडोसा अल्वीमिया बांस के प्रमुख प्रजाति होखेला",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_AGRI_00638.wav",
+   "duration": 4.83
+  },
+  {
+   "category": "v_to_b",
+   "note": "व often spoken as ब (विकास -> बिकास)",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_00462",
+   "text": "कृषि विज्ञान पाठ्यक्रम सब डिग्री कॉलेज में आसानी से नाही मिलेला",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_00462.wav",
+   "duration": 4.679
+  },
+  {
+   "category": "v_to_b",
+   "note": "व often spoken as ब (विकास -> बिकास)",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_02467",
+   "text": "तरीके या टिकाऊ कृषि के बदे विस्तृत विवरण जइसे संतुलित उर्बरकन प्रयोग करके करल जा सकेला",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_02467.wav",
+   "duration": 7.72
+  },
+  {
+   "category": "sibilant",
+   "note": "श/ष often merge to स",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_AGRI_00058",
+   "text": "शहर क मक्खि पालऽवाला उ ब्यक्ति होला जे मधुमख्खियन के छत्ता आउर बक्सा में रख्खेला",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_AGRI_00058.wav",
+   "duration": 6.96
+  },
+  {
+   "category": "sibilant",
+   "note": "श/ष often merge to स",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_AGRI_00445",
+   "text": "स्पिनिंग जेनी एक तरह क मशीन हउवे एमन कई स्पिंडल बनल रहेला",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_AGRI_00445.wav",
+   "duration": 5.48
+  },
+  {
+   "category": "sibilant",
+   "note": "श/ष often merge to स",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_00577",
+   "text": "हम किसानन के मृदा प्रबंधन के बारे में प्रशिक्षित करीला",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_00577.wav",
+   "duration": 3.9
+  },
+  {
+   "category": "sibilant",
+   "note": "श/ष often merge to स",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_01329",
+   "text": "मट्टी के कीड़न में आम मट्टी के कीड़ा सब में शामिल हौ जइसे तिलचट्टा क्रिकेट इयरविग स्कारब सिम्फिला तार कीड़ा",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_01329.wav",
+   "duration": 10.31
+  },
+  {
+   "category": "retroflex_n",
+   "note": "ण often spoken as न",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_AGRI_03048",
+   "text": "खाद छिड़के वाला उपकरण खाद बिखरला में एक ट्रेलर होला जेके ट्रैक्टर के पीछे खींच के ले जाए के होला",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_AGRI_03048.wav",
+   "duration": 7.8
+  },
+  {
+   "category": "retroflex_n",
+   "note": "ण often spoken as न",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_FINA_00166",
+   "text": "हेज फंड के उदाहरण में मुनोथ हेज फंड क्वांट फर्स्ट वैकल्पिक निवेश आई.आई.एफ.एल अवसर फंड सब के शामिल करल जाला",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_FINA_00166.wav",
+   "duration": 10.42
+  },
+  {
+   "category": "retroflex_n",
+   "note": "ण often spoken as न",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_01403",
+   "text": "कश्मीरी ऊन के उपलब्धता सिमित बा एही कारण से इ बहुत महँगा बिकेला",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_01403.wav",
+   "duration": 5.56
+  },
+  {
+   "category": "retroflex_n",
+   "note": "ण often spoken as न",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_01838",
+   "text": "फसल ऋण खातिर मौजूदा के.सी.सी के अलावा पशुपालन किसानन के अल्पकालिक ऋण पर बैंकन के दू प्रतिशत ह",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_01838.wav",
+   "duration": 8.15
+  },
+  {
+   "category": "avagraha",
+   "note": "ऽ lengthens the preceding vowel (बढ़ऽ)",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_AGRI_00077",
+   "text": "अंजीर एक खे फल हव जवन खून बढ़ावऽ में खूबऽ फायदा करऽला",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_AGRI_00077.wav",
+   "duration": 5.06
+  },
+  {
+   "category": "avagraha",
+   "note": "ऽ lengthens the preceding vowel (बढ़ऽ)",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_AGRI_00143",
+   "text": "नीला लिली चांदनी रात में देखऽ में बहुत सुन्दर लगऽ ला",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_AGRI_00143.wav",
+   "duration": 4.4
+  },
+  {
+   "category": "avagraha",
+   "note": "ऽ lengthens the preceding vowel (बढ़ऽ)",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_00553",
+   "text": "बारानी खेती सुखल परदेस में होला जहाँ पानी नाहीं या त कम बरसऽ ला",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_00553.wav",
+   "duration": 5.56
+  },
+  {
+   "category": "avagraha",
+   "note": "ऽ lengthens the preceding vowel (बढ़ऽ)",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_00741",
+   "text": "आज हमने के गांव में आजऽ कुछ लोग मीरदा प्रबंधन के बारे में बतावे आइल रहलन",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_00741.wav",
+   "duration": 6.04
+  },
+  {
+   "category": "verb_la",
+   "note": "Bhojpuri verb endings -ला/-ले",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_AGRI_01614",
+   "text": "अलसी के बीज के सेवन से सूखा खांसी अवुरी दमा भी ठीक हो जाला",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_AGRI_01614.wav",
+   "duration": 5.06
+  },
+  {
+   "category": "verb_la",
+   "note": "Bhojpuri verb endings -ला/-ले",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_AGRI_01620",
+   "text": "अंत्योदय अन्न योजना जेमन लाखन गरीबन परिवारन के जादा सबसीडी वाला भोजन प्रदान करेला",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_AGRI_01620.wav",
+   "duration": 7.185
+  },
+  {
+   "category": "verb_la",
+   "note": "Bhojpuri verb endings -ला/-ले",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_02219",
+   "text": "ह्यचीन्थ के जलकुंभी, गुलाबी तुरसावा आउर राहुरतन कहल जाला",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_02219.wav",
+   "duration": 5.69
+  },
+  {
+   "category": "verb_la",
+   "note": "Bhojpuri verb endings -ला/-ले",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_02225",
+   "text": "गाजर एक जड़ के सब्जी हउवे आमतौर पर नारंगी रंग के होला हालाँकि बैंगनी करिया लाल रंग के भी होला",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_02225.wav",
+   "duration": 7.09
+  },
+  {
+   "category": "verb_ba",
+   "note": "Bhojpuri copula बा/हवे vs Hindi है",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_EVAL_00016",
+   "text": "हमके पता हव हम अबहिंय ओनसे फोन पर बतियइले हई।",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_EVAL_00016.wav",
+   "duration": 3.92
+  },
+  {
+   "category": "verb_ba",
+   "note": "Bhojpuri copula बा/हवे vs Hindi है",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_EVAL_00183",
+   "text": "का हमरे बदे टेबल पर कउनो रोटी बचल हव ?",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_EVAL_00183.wav",
+   "duration": 3.49
+  },
+  {
+   "category": "verb_ba",
+   "note": "Bhojpuri copula बा/हवे vs Hindi है",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_00820",
+   "text": "उखड़ला के बाद भी इ पतई अवुरी फूल पैदा करत रहेला एहसे भारतीय संदर्भ में प्लुमेरिया के अमर होखे के गौरव मिलल ह",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_00820.wav",
+   "duration": 9.04
+  },
+  {
+   "category": "verb_ba",
+   "note": "Bhojpuri copula बा/हवे vs Hindi है",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_01815",
+   "text": "राधा सड़क बाजार में आपन हाथ से बनल पेंटिंग बेचत बाड़ी",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_01815.wav",
+   "duration": 4.66
+  },
+  {
+   "category": "final_vowel",
+   "note": "final vowel retained where Hindi drops it (कहल)",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_AGRI_00597",
+   "text": "हमने जब बम्बई घूमे गईल रहली तब्ब उहाँ मछरी पकड़ऽ के उद्योग देखले रहली",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_AGRI_00597.wav",
+   "duration": 6.18
+  },
+  {
+   "category": "final_vowel",
+   "note": "final vowel retained where Hindi drops it (कहल)",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_AGRI_00759",
+   "text": "खेत मे काम करेवाला मजूर ही असली किसान हो लन जे दिनरात एक करके खेती में खटऽ लन",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_AGRI_00759.wav",
+   "duration": 6.89
+  },
+  {
+   "category": "final_vowel",
+   "note": "final vowel retained where Hindi drops it (कहल)",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_02606",
+   "text": "एग्रीवोल्टिक दोहरी उपयोग वाला सौर फोटोवोल्टिक बिजली उत्पादन के उपयोग ह",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_02606.wav",
+   "duration": 5.9
+  },
+  {
+   "category": "final_vowel",
+   "note": "final vowel retained where Hindi drops it (कहल)",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_AGRI_02804",
+   "text": "भारत के पहिला कपास करखाना द बॉम्बे स्पिनिंग मिल इस्थापित भइल रहल",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_02804.wav",
+   "duration": 5.677
+  },
+  {
+   "category": "conjunct",
+   "note": "consonant clusters",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_FOOD_00039",
+   "text": "गुल्यास्लेवेस, हलास्ले, ग्युमोल्क्सलेव्स व मेगीलेव्स सब हंगेरियन व्यंजन हौ",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_FOOD_00039.wav",
+   "duration": 7.24
+  },
+  {
+   "category": "conjunct",
+   "note": "consonant clusters",
+   "speaker": "bho_f",
+   "utt_id": "IISc_SYSPINProject_bho_f_FOOD_00076",
+   "text": "क्रेपल के टॉर्टास फ्रिटास भी कहल जाला, एगो तले वाला पेस्ट्री या क्विक ब्रेड हवे जोकि डोनट के किस्मन में आवेला",
+   "audio_path": "data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_FOOD_00076.wav",
+   "duration": 8.96
+  },
+  {
+   "category": "conjunct",
+   "note": "consonant clusters",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_FINA_02572",
+   "text": "आर्थिक इतिहास बतावेला कि कइसे महान अर्थशास्त्री लोग के विचार ना खाली समाजन के प्रभावित कइलस",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_FINA_02572.wav",
+   "duration": 7.48
+  },
+  {
+   "category": "conjunct",
+   "note": "consonant clusters",
+   "speaker": "bho_m",
+   "utt_id": "IISc_SYSPINProject_bho_m_FINA_03354",
+   "text": "कोरोना काल वाले ए दौर में स्वास्थ्य बीमा से मनोबल बनल रहल ह",
+   "audio_path": "data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_FINA_03354.wav",
+   "duration": 4.79
+  }
+ ]
+}
