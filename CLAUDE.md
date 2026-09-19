@@ -39,10 +39,37 @@ Done: data downloaded and prepared, diagnostics built, weights verified, CPU bas
 | Diagnostics | `manifests/diagnostics.json` | 32 held-out sentences, 8 contrasts |
 | CPU baseline audio | `runs/baseline/` | stock IndicF5, gitignored |
 
-If the disk is fresh, `data/` and `checkpoints/` must be re-fetched:
-- Weights: `hf auth login`, then `hf download ai4bharat/IndicF5 --local-dir checkpoints/IndicF5` (accept terms on the model page first).
-- Corpus: request download links at https://spiredatasets.ee.iisc.ac.in/syspincorpus (Bhojpuri, both speakers, Human Checked). Links are emailed and expire after 7 days.
-- Then: `python scripts/prepare_syspin.py --name syspin_full --exclude-file manifests/diagnostics_exclude.txt` and the same for `syspin_10h` (`--train-hours-per-speaker 5`) and `syspin_slice` (`--train-hours-per-speaker 1`).
+## Fresh-machine bootstrap (empty disk)
+
+Code comes back from git; data, weights and credentials do not. Run in this order — steps 1–3 need the user.
+
+1. **Repo access.** The old SSH deploy key is gone. Make a new one and add it at GitHub → repo → Settings → Deploy keys (tick *Allow write access*):
+   ```bash
+   ssh-keygen -t ed25519 -N "" -C "bhojpuri-f5-tts-deploy" -f ~/.ssh/bhojpuri_f5_tts_deploy
+   cat ~/.ssh/bhojpuri_f5_tts_deploy.pub
+   printf '\nHost github-bhojpuri-f5-tts\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/bhojpuri_f5_tts_deploy\n  IdentitiesOnly yes\n' >> ~/.ssh/config
+   git clone git@github-bhojpuri-f5-tts:gentleman101/bhojpuri-f5-tts.git ~/bhojpuri-f5-tts
+   git -C ~/bhojpuri-f5-tts config user.name "Naman"
+   git -C ~/bhojpuri-f5-tts config user.email "50843800+gentleman101@users.noreply.github.com"
+   ```
+2. **Weights** (gated; terms already accepted on the account): `hf auth login` in a real terminal, then
+   `hf download ai4bharat/IndicF5 --local-dir checkpoints/IndicF5`.
+3. **Corpus** — links are personal, time-limited and not in git. Either reuse the two wget URLs from the
+   SYSPIN email, or request fresh ones at https://spiredatasets.ee.iisc.ac.in/syspincorpus (Bhojpuri,
+   Female + Male, Human Checked). Then:
+   ```bash
+   ./scripts/download_syspin.sh "<female_url>" "<male_url>"     # ~10 min at 200 MB/s
+   ```
+4. **Rebuild the three manifests** (~25 min, mostly resampling 53k clips):
+   ```bash
+   python scripts/prepare_syspin.py --name syspin_full  --exclude-file manifests/diagnostics_exclude.txt
+   python scripts/prepare_syspin.py --name syspin_10h   --exclude-file manifests/diagnostics_exclude.txt --train-hours-per-speaker 5
+   python scripts/prepare_syspin.py --name syspin_slice --exclude-file manifests/diagnostics_exclude.txt --train-hours-per-speaker 1
+   ```
+   Splits are seeded, so these reproduce the manifests already in git. Confirm with `git status` — the
+   manifest files should come back unchanged. **`manifests/diagnostics.json` is already in git; do not
+   rebuild it**, or the held-out sentences change and the baseline stops being comparable.
+5. **Disk**: needs ~70 GB for raw + processed + weights. Check before downloading.
 
 ## Next steps (in order)
 
