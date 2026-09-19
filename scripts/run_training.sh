@@ -5,7 +5,7 @@
 #
 # Attach:  tmux attach -t train      (Ctrl-b then d to detach; Ctrl-b n / p to switch windows)
 # Stop:    tmux kill-session -t train
-# Env:     HF_REPO (default gentleman101/bhojpuri-f5-tts, private), DASH_PORT (default 8080), SESSION (default train)
+# Env:     SKIP_HF=1 to skip the token check, HF_REPO (default gentleman101/bhojpuri-f5-tts, private), DASH_PORT (default 8080), SESSION (default train)
 set -euo pipefail
 
 if [ $# -lt 1 ]; then sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 1; fi
@@ -21,6 +21,14 @@ DASH_PORT="${DASH_PORT:-8080}"
 [ -f "$CONFIG" ] || { echo "config not found: $CONFIG" >&2; exit 1; }
 tmux has-session -t "$SESSION" 2>/dev/null && { echo "tmux session '$SESSION' already exists — attach with: tmux attach -t $SESSION" >&2; exit 1; }
 RUN_DIR=$(.venv/bin/python -c "import yaml,sys;print(yaml.safe_load(open(sys.argv[1]))['output_dir'])" "$CONFIG")
+# A read-only token would crash the uploader while training carried on with no backup. Refuse early (SKIP_HF=1 to override).
+if [ -z "${SKIP_HF:-}" ]; then
+  ROLE=$(.venv/bin/python -c "from huggingface_hub import HfApi;print(HfApi().whoami().get('auth',{}).get('accessToken',{}).get('role','unknown'))" 2>/dev/null || echo none)
+  case "$ROLE" in
+    write|admin|fineGrained|unknown) ;;
+    *) echo "Hugging Face token role is '$ROLE' — need a write token. Run: hf auth login (paste a write token), or SKIP_HF=1 to train without uploads." >&2; exit 1 ;;
+  esac
+fi
 mkdir -p "$RUN_DIR"
 
 ENV="cd $ROOT && source .venv/bin/activate"

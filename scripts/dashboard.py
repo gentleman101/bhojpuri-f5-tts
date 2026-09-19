@@ -21,8 +21,10 @@ PAGE = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Bhojpuri LoRA training</title>
 <style>
-:root{color-scheme:light dark;--bg:#fafaf9;--card:#fff;--fg:#1c1917;--mut:#78716c;--line:#e7e5e4;--a:#2563eb;--b:#dc2626;--c:#16a34a;--d:#9333ea}
-@media (prefers-color-scheme:dark){:root{--bg:#0c0a09;--card:#1c1917;--fg:#fafaf9;--mut:#a8a29e;--line:#292524;--a:#60a5fa;--b:#f87171;--c:#4ade80;--d:#c084fc}}
+:root{color-scheme:light;--bg:#fafaf9;--card:#fff;--fg:#1c1917;--mut:#78716c;--line:#e7e5e4;--a:#2563eb;--b:#dc2626;--c:#16a34a;--d:#9333ea}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0c0a09;--card:#1c1917;--fg:#fafaf9;--mut:#a8a29e;--line:#292524;--a:#60a5fa;--b:#f87171;--c:#4ade80;--d:#c084fc}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0c0a09;--card:#1c1917;--fg:#fafaf9;--mut:#a8a29e;--line:#292524;--a:#60a5fa;--b:#f87171;--c:#4ade80;--d:#c084fc}
+[hidden]{display:none!important}.note{margin:-6px 0 12px}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,sans-serif;padding:16px}
 h1{font-size:18px;margin:0}header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
 select{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
@@ -39,11 +41,12 @@ table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:3px 8px;
 </style></head><body>
 <header><h1>Bhojpuri LoRA training <span id="status" class="badge"></span></h1>
 <label>Run <select id="run"></select></label></header>
+<div id="snapnote" class="s note" hidden></div>
 <div class="card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><b id="prog"></b><span id="eta" class="s"></span></div>
 <div class="bar"><i id="barfill" style="width:0"></i></div></div>
 <div class="grid" id="tiles" style="margin-top:12px"></div>
 <div class="charts" id="charts"></div>
-<div class="card" style="margin-top:12px"><h2>Samples (listen by step — judge tone and prosody by ear)</h2><div class="wrap" id="samples"></div></div>
+<div class="card" id="samplecard" style="margin-top:12px"><h2>Samples (listen by step — judge tone and prosody by ear)</h2><div class="wrap" id="samples"></div></div>
 <script>
 const $=id=>document.getElementById(id);
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -154,6 +157,30 @@ def list_samples(name: str) -> list[dict]:
     return [dict(step=d.name, files=sorted(p.name for p in d.glob("*.wav"))) for d in sorted(root.glob("step_*"))]
 
 
+# Snapshot mode: the page above, with its /api calls answered from embedded data and the clock frozen at
+# snapshot time, so an hours-old snapshot shows the state it captured instead of "stalled". Publish the
+# output as a claude.ai artifact; regenerate and republish to refresh.
+SNAPSHOT_JS = r"""
+Date.now=()=>SNAP.at*1000;
+window.fetch=async u=>{const p=new URL(u,"http://x").pathname,j=v=>({json:async()=>v});
+  return p==="/api/runs"?j([SNAP.run]):p==="/api/run"?j(SNAP.records):p==="/api/gpu"?j(SNAP.gpu):j([])};
+document.getElementById("snapnote").hidden=false;
+document.getElementById("snapnote").textContent="Snapshot taken "+new Date(SNAP.at*1000).toLocaleString()+" — republished periodically, not live. Audio samples are only in the live dashboard.";
+document.getElementById("samplecard").hidden=true;
+"""
+
+
+def build_snapshot(run: str, out: Path):
+    import re
+    import time
+
+    data = dict(at=time.time(), run=run, records=read_metrics(run), gpu=gpu_status())
+    style = re.search(r"<style>(.*?)</style>", PAGE, re.S).group(1)
+    body = re.search(r"<body>(.*)</body>", PAGE, re.S).group(1)
+    shim = "<script>window.SNAP=" + json.dumps(data).replace("</", "<\\/") + ";" + SNAPSHOT_JS + "</script>"
+    out.write_text(f"<title>Bhojpuri Training Monitor</title>\n<style>{style}</style>\n{body.replace('<script>', shim + '<script>', 1)}")
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, body: bytes, ctype: str, status: int = 200):
         self.send_response(status)
@@ -198,6 +225,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 only if the port is firewalled")
+    parser.add_argument("--snapshot", type=Path, metavar="OUT.html",
+                        help="write a self-contained snapshot page for --run (default: newest run) and exit")
+    parser.add_argument("--run", help="run name for --snapshot")
     args = parser.parse_args()
+    if args.snapshot:
+        runs = sorted((p.parent.name for p in RUNS.glob("*/metrics.jsonl")),
+                      key=lambda n: (RUNS / n / "metrics.jsonl").stat().st_mtime, reverse=True)
+        run = args.run or (runs[0] if runs else "")
+        if not run:
+            raise SystemExit("no runs with metrics.jsonl yet")
+        build_snapshot(run, args.snapshot)
+        print(f"wrote {args.snapshot} for run {run}")
+        raise SystemExit(0)
     print(f"Dashboard on http://{args.host}:{args.port}  (runs dir: {RUNS})")
     ThreadingHTTPServer((args.host, args.port), Handler).serve_forever()
