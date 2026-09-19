@@ -34,3 +34,10 @@ venv/
 
 # OS
 .DS_Store
+
+# Upstream code checkouts
+third_party/
+
+# Model weights and training runs
+checkpoints/
+runs/

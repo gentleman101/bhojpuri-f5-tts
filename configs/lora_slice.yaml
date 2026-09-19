@@ -1,0 +1,52 @@
+# Phase 3: first LoRA run on the ~2h slice (1h per speaker). Single GPU (L4 24GB or A100).
+output_dir: runs/lora_slice_r32
+seed: 42
+
+data:
+  train_manifest: manifests/syspin_slice/train.csv
+  val_manifest: manifests/syspin_slice/val.csv
+  max_frames_per_batch: 19200   # ~205 s of audio per batch; lower if out of memory on L4
+  max_samples_per_batch: 32
+  num_workers: 4
+
+model:
+  # Downloaded with: hf download ai4bharat/IndicF5 --local-dir checkpoints/IndicF5
+  vocab_file: checkpoints/IndicF5/checkpoints/vocab.txt
+  base_checkpoint: checkpoints/IndicF5/model.safetensors
+  arch: {dim: 1024, depth: 22, heads: 16, ff_mult: 2, text_dim: 512, conv_layers: 4}
+
+lora:
+  rank: 32
+  alpha: 32
+  dropout: 0.0
+  # Regexes matched against full module names inside the CFM model.
+  target_modules:
+    - 'transformer\.transformer_blocks\.\d+\.attn\.(to_q|to_k|to_v|to_out\.0)'
+    - 'transformer\.transformer_blocks\.\d+\.ff\.ff\.(0\.0|2)'
+  # Parameters trained fully alongside LoRA (regexes on parameter names). The text embedding
+  # is where language-specific character knowledge lives; enable if LoRA alone underfits.
+  extra_trainable: []
+  # extra_trainable: ['transformer\.text_embed\..*']
+
+optim:
+  learning_rate: 1.0e-4
+  weight_decay: 0.0
+  warmup_updates: 200
+  max_updates: 3000
+  grad_accumulation_steps: 1
+  max_grad_norm: 1.0
+  mixed_precision: bf16          # "no" on CPU; "fp16" on GPUs without bf16 support
+  ema_decay: 0.999
+
+logging:
+  log_every: 20
+  val_every: 250
+  sample_every: 500
+  save_every: 500
+  keep_last: 3
+
+sampling:
+  num_per_speaker: 2
+  nfe_step: 32
+  cfg_strength: 2.0
+  sway_sampling_coef: -1.0

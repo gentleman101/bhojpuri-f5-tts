@@ -1,0 +1,9 @@
+audio_path|text|duration|speaker|utt_id|domain
+data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_HEAL_01898.wav|नेत्र शल्य चिकित्सा क उल्लेख आठार सौ ईसा पूर्वक कई प्राचीन ग्रंथ में पावल जा सकला|6.420|bho_f|IISc_SYSPINProject_bho_f_HEAL_01898|HEALTH
+data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_INDI_01257.wav|पंबा नदी भारत के केरल राज्य में पेरियार आऊर भारतापुझा क बाद सबसे बड़ नदी हव|6.300|bho_f|IISc_SYSPINProject_bho_f_INDI_01257|INDIA RELATED
+data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_POLI_02370.wav|यथार्थवाद क मतलब कि सच्चाई के साथ जमीनी हकीकत से जुड़ के काम करेके कहलन|5.860|bho_f|IISc_SYSPINProject_bho_f_POLI_02370|POLITICS
+data/processed/syspin_24k/bho_f/IISc_SYSPINProject_bho_f_SPOR_01867.wav|वृश्चिकासन या बिच्छू मुद्रा आधुनिक योग में एक उल्टा आसन ह|4.300|bho_f|IISc_SYSPINProject_bho_f_SPOR_01867|SPORTS
+data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_AGRI_02853.wav|पौधन के कठोरता बनावे के क्षमता के नुकसान पनि के खराबी सूखा के कारण या किटाणु आदि से होला|7.259|bho_m|IISc_SYSPINProject_bho_m_AGRI_02853|AGRICULTURE
+data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_FINA_02572.wav|आर्थिक इतिहास बतावेला कि कइसे महान अर्थशास्त्री लोग के विचार ना खाली समाजन के प्रभावित कइलस|7.480|bho_m|IISc_SYSPINProject_bho_m_FINA_02572|FINANCE
+data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_LOCA_02288.wav|जी बीस वित्त मंत्री आउर सेन्टर बैंक के गवर्नर के समूह हवे|5.420|bho_m|IISc_SYSPINProject_bho_m_LOCA_02288|LOCAL CONVERSATION
+data/processed/syspin_24k/bho_m/IISc_SYSPINProject_bho_m_SOCI_02789.wav|सामाजिक ज्ञानमीमांसा उ व्यापक दृष्टिकोणन के संदर्भित करत हवे जेके ज्ञानमीमांसा में लिहल जा सकत हवे|9.060|bho_m|IISc_SYSPINProject_bho_m_SOCI_02789|SOCIAL

@@ -1,0 +1,25 @@
+[project]
+name = "bhojpuri-tts"
+version = "0.1.0"
+description = "LoRA fine-tuning and distillation of IndicF5 for Bhojpuri TTS"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "f5_tts",
+    "torch==2.5.1",
+    "torchaudio==2.5.1",
+    "transformers<4.50",
+    "numpy<=1.26.4",
+    "soundfile",
+    "safetensors",
+    "accelerate",
+    "pyyaml",
+    "tensorboard",
+    "tqdm",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["bhojpuri_tts*"]

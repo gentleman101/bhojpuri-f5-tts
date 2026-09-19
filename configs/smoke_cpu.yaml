@@ -1,0 +1,48 @@
+# CPU smoke test of the training code: tiny random-init model, no IndicF5 weights needed.
+# Output audio is noise — this only proves the pipeline runs end to end.
+output_dir: runs/smoke_cpu
+seed: 42
+
+data:
+  train_manifest: manifests/syspin_smoke/train.csv
+  val_manifest: manifests/syspin_smoke/val.csv
+  max_frames_per_batch: 4000
+  max_samples_per_batch: 8
+  num_workers: 2
+
+model:
+  vocab_file: manifests/syspin_smoke/vocab_data.txt
+  base_checkpoint: null
+  arch: {dim: 128, depth: 2, heads: 4, ff_mult: 2, text_dim: 64, conv_layers: 1}
+
+lora:
+  rank: 4
+  alpha: 4
+  dropout: 0.0
+  target_modules:
+    - 'transformer\.transformer_blocks\.\d+\.attn\.(to_q|to_k|to_v|to_out\.0)'
+    - 'transformer\.transformer_blocks\.\d+\.ff\.ff\.(0\.0|2)'
+  extra_trainable: []
+
+optim:
+  learning_rate: 1.0e-3
+  weight_decay: 0.0
+  warmup_updates: 5
+  max_updates: 20
+  grad_accumulation_steps: 2
+  max_grad_norm: 1.0
+  mixed_precision: "no"
+  ema_decay: 0.9
+
+logging:
+  log_every: 5
+  val_every: 10
+  sample_every: 20
+  save_every: 10
+  keep_last: 2
+
+sampling:
+  num_per_speaker: 1
+  nfe_step: 4
+  cfg_strength: 2.0
+  sway_sampling_coef: -1.0
