@@ -38,7 +38,7 @@ select{background:var(--card);color:var(--fg);border:1px solid var(--line);borde
 canvas{width:100%;height:190px;display:block}h2{font-size:13px;margin:0 0 6px}
 table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:3px 8px;border-bottom:1px solid var(--line)}
 .wrap{overflow-x:auto}audio{height:28px;width:220px}
-.planned{color:var(--mut)}.you{color:var(--d)}td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.ctl{display:flex;flex-wrap:wrap;gap:16px;align-items:center}.ctl label{display:flex;gap:8px;align-items:center}.planned{color:var(--mut)}.you{color:var(--d)}td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
 </style></head><body>
 <header><h1>Bhojpuri LoRA training <span id="status" class="badge"></span></h1>
 <label>Run <select id="run"></select></label></header>
@@ -48,6 +48,9 @@ table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:3px 8px;
 <div class="grid" id="tiles" style="margin-top:12px"></div>
 <div class="card" id="plan" style="margin-top:12px"><h2>Estimated timeline — whole plan</h2><div class="wrap" id="plantable"></div>
 <div class="s" id="plannote" style="margin-top:6px"></div></div>
+<div class="card ctl" style="margin-top:12px"><label>X axis <select id="xaxis"><option value="step">Step</option><option value="time">Relative time (active training)</option></select></label>
+<label>Smoothing <input type="range" id="smooth" min="0" max="0.99" step="0.01" value="0.6"> <span id="smoothv">0.60</span></label>
+<span class="s">same controls as TensorBoard: faint line is the raw value</span></div>
 <div class="charts" id="charts" style="margin-top:12px"></div>
 <div class="card" id="samplecard" style="margin-top:12px"><h2>Samples (listen by step — judge tone and prosody by ear)</h2><div class="wrap" id="samples"></div></div>
 <script>
@@ -56,7 +59,7 @@ const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim
 const fmt=s=>{if(!isFinite(s))return"–";s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:m?`${m}m ${s%60}s`:`${s}s`};
 const med=a=>{if(!a.length)return NaN;a=[...a].sort((x,y)=>x-y);return a[a.length>>1]};
 const CH=[["Training loss","loss","--a","train"],["Validation loss (EMA)","val_loss","--b","val"],["Seconds per update","sec_per_update","--d","train"],["Gradient norm","grad_norm","--c","train"],["Learning rate","lr","--a","train"],["Audio-hours per hour (speed)","speed","--c","train"]];
-function chart(cv,pts,color){
+function chart(cv,pts,color,o){o=o||{};
   const dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;
   const g=cv.getContext("2d");g.scale(dpr,dpr);g.clearRect(0,0,W,H);
   g.font="11px system-ui";g.fillStyle=css("--mut");g.strokeStyle=css("--line");
@@ -67,8 +70,9 @@ function chart(cv,pts,color){
   const X=x=>L+(x-x0)/(x1-x0)*(W-L-R),Y=y=>T+(1-(y-y0)/(y1-y0))*(H-T-B);
   for(let i=0;i<=4;i++){const y=y0+(y1-y0)*i/4;g.beginPath();g.moveTo(L,Y(y));g.lineTo(W-R,Y(y));g.stroke();
     g.fillText(Math.abs(y)<.01&&y!=0?y.toExponential(1):(+y.toPrecision(3)).toString(),2,Y(y)+4)}
-  g.fillText(x0,L,H-5);g.textAlign="right";g.fillText("update "+x1,W-R,H-5);g.textAlign="left";
-  g.strokeStyle=css(color);g.lineWidth=1.8;g.beginPath();pts.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1])));g.stroke();
+  g.fillText(o.time?fmt(x0):x0,L,H-5);g.textAlign="right";g.fillText(o.time?"elapsed "+fmt(x1):"update "+x1,W-R,H-5);g.textAlign="left";
+  const line=(arr,al)=>{g.globalAlpha=al;g.strokeStyle=css(color);g.lineWidth=1.8;g.beginPath();arr.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1])));g.stroke();g.globalAlpha=1};
+  const a=o.smooth||0;if(a>0&&pts.length>2){let m=0;const sm=pts.map((p,i)=>{m=a*m+(1-a)*p[1];return[p[0],m/(1-Math.pow(a,i+1))]});line(pts,.25);line(sm,1)}else line(pts,1);
   if(pts.length<40){g.fillStyle=css(color);pts.forEach(p=>{g.beginPath();g.arc(X(p[0]),Y(p[1]),2.5,0,7);g.fill()})}
 }
 function tile(k,v,s){return `<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s||""}</div></div>`}
@@ -140,17 +144,21 @@ function render(){
     tile("GPU",g?g.util+"%":"n/a",g?`${g.temp}°C · ${g.power.toFixed(0)} W · ${g.name}`:"nvidia-smi unavailable"),
     tile("Checkpoints",ck.length,ck.length?"last @ update "+ck[ck.length-1].update:"none yet")].join("");
   if(!$("charts").children.length)$("charts").innerHTML=CH.map((c,i)=>`<div class="card"><h2>${c[0]}</h2><canvas id="c${i}"></canvas></div>`).join("");
-  CH.forEach((c,i)=>chart($("c"+i),(c[3]=="val"?va:tr).filter(r=>r[c[1]]!=null).map(r=>[r.update,r[c[1]]]),c[2]));
+  const timeMode=$("xaxis").value=="time",sm=+$("smooth").value;$("smoothv").textContent=sm.toFixed(2);
+  const kx=[[st?st.update:0,0]];let acc=0,pu=st?st.update:0;tr.forEach(r=>{if(r.update>pu){acc+=r.sec_per_update*(r.update-pu)}pu=r.update;kx.push([r.update,acc])});
+  const tOf=u=>{if(kx.length<2)return 0;if(u<=kx[0][0])return 0;for(let i=1;i<kx.length;i++)if(u<=kx[i][0]){const[a0,b0]=kx[i-1],[a1,b1]=kx[i];return b0+(b1-b0)*(u-a0)/Math.max(a1-a0,1)}return kx[kx.length-1][1]};
+  CH.forEach((c,i)=>chart($("c"+i),(c[3]=="val"?va:tr).filter(r=>r[c[1]]!=null).map(r=>[timeMode?tOf(r.update):r.update,r[c[1]]]),c[2],{time:timeMode,smooth:c[1]=="lr"?0:sm}));
 }
 async function samples(){
   if(!cur)return;const d=await (await fetch("/api/samples?name="+encodeURIComponent(cur))).json();const el=$("samples");
   const key=JSON.stringify(d);if(el.dataset.k==key)return;el.dataset.k=key;
   if(!d.length){el.textContent="No samples yet — first ones appear at the first sample_every step.";return}
-  el.innerHTML="<table>"+d.slice().reverse().map(s=>`<tr><th>step ${+s.step.replace("step_","")}</th>`+s.files.map(f=>`<td>${f.split("/").pop()}<br><audio controls preload="none" src="/audio/${encodeURI(cur+"/samples/"+s.step+"/"+f)}"></audio></td>`).join("")+"</tr>").join("")+"</table>";
+  el.innerHTML="<table>"+d.slice().reverse().map(s=>`<tr><th>step ${+s.step.replace("step_","")}</th>`+s.files.map(f=>`<td>${f.split("/").pop()}<br><audio controls preload="none" src="${s.data?s.data[f]:"/audio/"+encodeURI(cur+"/samples/"+s.step+"/"+f)}"></audio></td>`).join("")+"</tr>").join("")+"</table>";
 }
 $("run").onchange=()=>{cur=$("run").value;$("charts").innerHTML="";tick();samples()};
+$("xaxis").onchange=$("smooth").oninput=()=>recs.length&&render();
 addEventListener("resize",()=>recs.length&&render());
-tick();samples();setInterval(tick,5000);setInterval(samples,30000);
+tick().then(samples);setInterval(tick,5000);setInterval(samples,30000);
 </script></body></html>"""
 
 
@@ -195,10 +203,9 @@ def list_samples(name: str) -> list[dict]:
 SNAPSHOT_JS = r"""
 Date.now=()=>SNAP.at*1000;
 window.fetch=async u=>{const p=new URL(u,"http://x").pathname,j=v=>({json:async()=>v});
-  return p==="/api/runs"?j(SNAP.run?[SNAP.run]:[]):p==="/api/run"?j(SNAP.records):p==="/api/gpu"?j(SNAP.gpu):j([])};
+  return p==="/api/runs"?j(SNAP.run?[SNAP.run]:[]):p==="/api/run"?j(SNAP.records):p==="/api/gpu"?j(SNAP.gpu):p==="/api/samples"?j(SNAP.samples):j([])};
 document.getElementById("snapnote").hidden=false;
-document.getElementById("snapnote").textContent="Snapshot taken "+new Date(SNAP.at*1000).toLocaleString()+" — republished periodically, not live. Audio samples are only in the live dashboard."+(SNAP.note?" "+SNAP.note:"");
-document.getElementById("samplecard").hidden=true;
+document.getElementById("snapnote").textContent="Snapshot taken "+new Date(SNAP.at*1000).toLocaleString()+" — republished periodically, not live."+(SNAP.note?" "+SNAP.note:"");
 """
 
 
@@ -206,7 +213,15 @@ def build_snapshot(run: str, out: Path, note: str = ""):
     import re
     import time
 
-    data = dict(at=time.time(), run=run, records=read_metrics(run) if run else [], gpu=gpu_status(), note=note)
+    import base64
+
+    samples = []
+    for entry in (list_samples(run) if run else [])[-2:]:  # latest two sample steps, audio inlined (~1 MB each)
+        d = RUNS / run / "samples" / entry["step"]
+        samples.append(dict(entry, data={f: "data:audio/wav;base64," + base64.b64encode((d / f).read_bytes()).decode()
+                                         for f in entry["files"]}))
+    data = dict(at=time.time(), run=run, records=read_metrics(run) if run else [], gpu=gpu_status(), note=note,
+                samples=samples)
     style = re.search(r"<style>(.*?)</style>", PAGE, re.S).group(1)
     body = re.search(r"<body>(.*)</body>", PAGE, re.S).group(1)
     shim = "<script>window.SNAP=" + json.dumps(data).replace("</", "<\\/") + ";" + SNAPSHOT_JS + "</script>"
