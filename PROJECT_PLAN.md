@@ -30,11 +30,52 @@
 
 1. **Run the pretrained model first** — get IndicF5 working end-to-end on its existing languages; read the F5-TTS codebase (DiT architecture, flow matching, vocoder) before touching Bhojpuri.
 2. **Build the data pipeline on a small slice** — 1–2 hours of SYSPIN Bhojpuri; write the preprocessing/manifest script yourself.
-3. **First fine-tune: LoRA on the small slice** — validate the training loop and hyperparameters cheaply before scaling up.
-4. **Scale up and evaluate properly** — full ~95h SYSPIN fine-tune; evaluate manually (no strong Bhojpuri ASR exists for automated scoring) via held-out listening tests, ideally with native-speaker feedback.
+3. **First fine-tune: LoRA on the small slice** — validate the training loop and hyperparameters cheaply before scaling up. The 1.9h slice proves the code runs; it is too small to judge quality (see the data-size ladder below).
+4. **Tune on 10h, then scale to the full corpus if it earns it** — run the hyperparameter sweep on `syspin_10h` (9.4h), apply the stop/go rule below, and only then commit to the ~91h run. Evaluate with the diagnostic set, held-out listening tests, and native-speaker feedback.
 5. **Test zero-shot cloning honestly** — reference clip from a speaker unseen in training. If it fails or defaults to a SYSPIN voice, that's the key lesson about speaker diversity and generalization. Don't proceed until this is reasonably solid.
 6. **Distill into a smaller student model** — design a smaller architecture (SILMA's ~150M config as a reference shape), train with a distillation loss against the fine-tuned IndicF5 as teacher. Compare teacher vs. student on quality, size, and latency — this comparison is the deliverable.
 7. **Optional: expand data via podcaster outreach** — bonus round once the core pipeline is proven; compare cloning quality before/after added speaker diversity.
+
+---
+
+## Stop/go rule: does fine-tuning actually help?
+
+Stock IndicF5 already speaks intelligible Bhojpuri with correct voice cloning — its authors reached MUSHRA 82.0 on Bhojpuri from ~1h of *synthetic* audio ([IN-F5 paper](https://arxiv.org/abs/2505.20693)), and our own baseline listening confirms only specific characters are mispronounced. So the gain from fine-tuning must be demonstrated, not assumed.
+
+**The gate.** After the 10h run, compare against the stock baseline on the same 32 diagnostic sentences, same references, same seed and sampling settings:
+
+- **Improvement on diagnostics + ASR error rate + native-speaker ear → scale to the full ~91h run.**
+- **No clear improvement → do not pay for the full run.** First try the one variant that targets the observed symptom: unfreeze the text embedding (`extra_trainable`), where character-to-sound mapping lives. If that also fails, stop fine-tuning and proceed to distillation **with stock IndicF5 as the teacher** — the deliverable (teacher vs. student on quality/size/latency) does not depend on the fine-tune succeeding.
+
+A negative result is a real finding worth writing up: "91h of real studio data did not beat 1h of validated synthetic data" is genuinely informative about low-resource TTS. What it would *not* prove is that Bhojpuri fine-tuning is hopeless in general — only that LoRA at this scale did not help.
+
+---
+
+## Data-size ladder (from the IN-F5 paper's data-constrained study)
+
+| Their finding | Hours | MUSHRA | WER |
+|---|---|---|---|
+| Plenty | 100h | 64.3 | 32.6% |
+| **Nearly as good** | **10h** | **61.5** | **31.3%** |
+| Collapses | 1h | 33.7 | 59.4% |
+
+They also found 10h trained for 150k steps beat 100h trained for 120k steps — **longer training partly substitutes for more data**. Our three stages follow from this:
+
+| Manifest | Train audio | Purpose |
+|---|---|---|
+| `syspin_slice` | 1.9h | Pipeline correctness only — below the quality cliff |
+| `syspin_10h` | 9.4h | Hyperparameter sweep and the stop/go gate |
+| `syspin_full` | 90.8h | Final run, with a large update budget |
+
+Their full fine-tune used AdamW, lr 5e-5, 30k frames/GPU across 32 H100s, up to 150k steps, warmup 48k, checkpoints every 2k. Our single-GPU LoRA runs at a much smaller batch, so lr stays at 1e-4 with warmup ~10% of total updates.
+
+---
+
+## Evaluation
+
+- **Diagnostic set** (`manifests/diagnostics.json`) — 32 held-out sentences, 4 per pronunciation contrast where Bhojpuri diverges from Hindi (व→ब, श/ष→स, ण→न, avagraha, verb endings -ला, copula बा/हवे, retained final vowels, consonant clusters). Every clip is pinned out of training in all stages and has a real recording to compare against. Run with `scripts/eval_diagnostics.py`.
+- **Automated scoring** — no official Bhojpuri ASR exists (IndicConformer covers the 22 scheduled languages; Bhojpuri is not one). Community Whisper/wav2vec2 Bhojpuri fine-tunes do exist. Calibrate a candidate on *real* held-out recordings first to establish its error floor on human speech, then read our synthetic audio's CER relative to that floor.
+- **Listening tests** — MUSHRA-style (the IN-F5 paper's metric): reference plus shuffled systems scored 0–100 on one screen, with a hidden reference and a degraded anchor to catch inattentive listeners. Far more sensitive to small differences than 1–5 MOS, and usable with ~10–20 listeners. A simple two-clip page is enough for first impressions; build the MUSHRA page once there is a fine-tuned model worth comparing.
 
 ---
 
@@ -64,7 +105,7 @@ One instance, one machine ID, for the entire project. No separate filesystem res
 
 ## Open risks to keep in mind
 
-- **Evaluation bottleneck:** no reliable Bhojpuri ASR for automatic WER scoring — plan for manual/native-speaker evaluation throughout.
+- **Evaluation bottleneck:** no official Bhojpuri ASR for automatic WER scoring. Mitigated (not solved) by the diagnostic set, MUSHRA listening tests, and a community Bhojpuri ASR calibrated against real recordings — see Evaluation above.
 - **Speaker diversity:** only 2 SYSPIN speakers may not be enough to prove genuine cloning generalization — augmentation data may become necessary, not optional.
 - **Consent scope:** any voice used for cloning (even self-owned content) needs explicit, written, scope-limited consent — separate from ordinary copyright/ownership of the recording.
 - **Compute budget:** rented GPU costs estimated ~$150–400 total for LoRA fine-tuning + distillation runs (to be refined once rental pricing is checked).
