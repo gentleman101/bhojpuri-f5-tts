@@ -193,6 +193,12 @@ def main():
         print(f"Resumed from {ckpt_dir} at update {update}, epoch {epoch}")
 
     writer = SummaryWriter(out_dir / "tensorboard")
+    metrics_path = out_dir / "metrics.jsonl"  # read by scripts/dashboard.py
+
+    def emit(**row):
+        with metrics_path.open("a") as f:
+            f.write(json.dumps(dict(t=time.time(), **row)) + "\n")
+
     vocoder = None
     sample_pairs = pick_sample_pairs(val_rows, cfg["sampling"]["num_per_speaker"])
     unwrapped = accelerator.unwrap_model(model)
@@ -211,6 +217,8 @@ def main():
 
     model.train()
     start, frames_seen, loss_sum, loss_count = time.time(), 0, 0.0, 0
+    last_t, last_update = start, update
+    emit(kind="start", update=update, max_updates=max_updates, config=str(args.config))
     for batch in batches():
         with accelerator.accumulate(model):
             loss, _, _ = model(batch["mel"].to(device), text=batch["text"], lens=batch["lens"].to(device))
@@ -236,6 +244,13 @@ def main():
             writer.add_scalar("train/loss", loss_sum / loss_count, update)
             writer.add_scalar("train/grad_norm", float(grad_norm), update)
             writer.add_scalar("train/lr", lr, update)
+            now = time.time()
+            sec_per_update = (now - last_t) / max(update - last_update, 1)  # includes val/sample/save time
+            last_t, last_update = now, update
+            vram_gb = torch.cuda.max_memory_allocated() / 2**30 if torch.cuda.is_available() else 0.0
+            emit(kind="train", update=update, max_updates=max_updates, epoch=epoch, loss=loss_sum / loss_count,
+                 grad_norm=float(grad_norm), lr=lr, sec_per_update=sec_per_update,
+                 speed=audio_hours_per_hour, vram_gb=vram_gb)
             loss_sum, loss_count = 0.0, 0
 
         if args.overfit_one_batch:
@@ -249,6 +264,7 @@ def main():
             ema.swap(params)
             print(f"update {update}: val_loss (EMA weights) {val_loss:.4f}")
             writer.add_scalar("val/loss_ema", val_loss, update)
+            emit(kind="val", update=update, val_loss=val_loss)
 
         if update % log_cfg["sample_every"] == 0 or update == max_updates:
             if vocoder is None:
@@ -272,11 +288,13 @@ def main():
         if update % log_cfg["save_every"] == 0 or update == max_updates:
             save_checkpoint(out_dir, update, epoch, params, ema, optimizer, scheduler, log_cfg["keep_last"])
             print(f"update {update}: saved checkpoint")
+            emit(kind="checkpoint", update=update)
 
         if update >= max_updates:
             break
 
     writer.close()
+    emit(kind="done", update=update)
     print(f"Done: {update} updates in {(time.time() - start) / 60:.1f} min")
 
 

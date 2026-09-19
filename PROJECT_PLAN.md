@@ -65,7 +65,7 @@ They also found 10h trained for 150k steps beat 100h trained for 120k steps — 
 |---|---|---|
 | `syspin_slice` | 1.9h | Pipeline correctness only — below the quality cliff |
 | `syspin_10h` | 9.4h | Hyperparameter sweep and the stop/go gate |
-| `syspin_full` | 90.8h | Final run, with a large update budget |
+| `syspin_full` | 90.7h | Final run, with a large update budget |
 
 Their full fine-tune used AdamW, lr 5e-5, 30k frames/GPU across 32 H100s, up to 150k steps, warmup 48k, checkpoints every 2k. Our single-GPU LoRA runs at a much smaller batch, so lr stays at 1e-4 with warmup ~10% of total updates.
 

@@ -41,7 +41,7 @@ Done: data downloaded and prepared, diagnostics built, weights verified, CPU bas
 | Raw SYSPIN corpus | `data/syspin/` | 48 GB, gitignored |
 | Processed 24 kHz clips | `data/processed/syspin_24k/` | 15 GB, gitignored |
 | IndicF5 weights | `checkpoints/IndicF5/` | 1.4 GB, gitignored, gated download |
-| Manifests | `manifests/syspin_{slice,10h,full}/` | in git — 1.9h / 9.4h / 90.8h train |
+| Manifests | `manifests/syspin_{slice,10h,full}/` | in git — 1.9h / 9.4h / 90.7h train |
 | Diagnostics | `manifests/diagnostics.json` | 32 held-out sentences, 8 contrasts |
 | CPU baseline audio | `runs/baseline/` | stock IndicF5, gitignored |
 
@@ -97,12 +97,15 @@ Anything less means clips are missing, and the manifests reference files that ar
 2. **Sanity**: `python scripts/train_lora.py --config configs/lora_slice.yaml --overfit-one-batch 200` — loss must fall.
 3. **Slice run** on `configs/lora_slice.yaml` — pipeline check only; 1.9h is below the quality cliff.
 4. **10h sweep**: baseline, then `extra_trainable: text_embed`, then rank 64/16, then lr variants.
-5. **Stop/go gate**: `scripts/eval_diagnostics.py` vs the stock baseline. Only scale to 90.8h if it improves.
+5. **Stop/go gate**: `scripts/eval_diagnostics.py` vs the stock baseline. Only scale to 90.7h if it improves.
 
 ## Commands
 
 ```bash
+./scripts/run_training.sh configs/lora_10h.yaml [--resume latest]   # tmux: trainer + dashboard + HF uploader (attach: tmux attach -t train)
 python scripts/train_lora.py --config configs/lora_slice.yaml [--resume latest]
+python scripts/push_checkpoints.py --run runs/<run> --repo gentleman101/bhojpuri-f5-tts   # private HF repo; full resumable checkpoints
+python scripts/dashboard.py --port 8080      # live loss/ETA/GPU page; ssh -L 8080:localhost:8080 <box>; reads runs/*/metrics.jsonl
 python scripts/eval_diagnostics.py --name baseline_stock                 # stock model
 python scripts/eval_diagnostics.py --name lora_10h --adapter runs/<run>/checkpoints/step_0002000
 python scripts/infer.py --ref-audio X.wav --ref-text "..." --text "..." --out out.wav [--adapter DIR]
