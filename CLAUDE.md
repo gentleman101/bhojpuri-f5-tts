@@ -30,7 +30,7 @@ uv pip install -e third_party/IndicF5 --no-deps && uv pip install -e . --no-deps
 Install torch from the CUDA index *first*; the lock file lists plain `torch==2.5.1`, which would
 otherwise pull the CPU wheel from PyPI.
 
-Set `max_frames_per_batch` by VRAM: 19200 for 24 GB, 38400 for 40 GB+. `mixed_precision: bf16` needs Ampere or newer (use `fp16` on V100/T4).
+Target machine is an A100 40GB with 16 cores, so configs ship with `max_frames_per_batch: 38400` and `num_workers: 8`. Halve the batch on a 24 GB card. `mixed_precision: bf16` needs Ampere or newer (use `fp16` on V100/T4).
 
 ## State as of 2026-09-19
 

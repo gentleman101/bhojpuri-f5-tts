@@ -5,9 +5,9 @@ seed: 42
 data:
   train_manifest: manifests/syspin_slice/train.csv
   val_manifest: manifests/syspin_slice/val.csv
-  max_frames_per_batch: 19200   # ~205 s of audio per batch; lower if out of memory on L4
+  max_frames_per_batch: 38400   # ~410 s of audio per batch (A100 40GB); halve for a 24GB card
   max_samples_per_batch: 32
-  num_workers: 4
+  num_workers: 8
 
 model:
   # Downloaded with: hf download ai4bharat/IndicF5 --local-dir checkpoints/IndicF5

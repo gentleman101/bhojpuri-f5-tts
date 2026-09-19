@@ -1,0 +1,52 @@
+# Phase 4: hyperparameter sweep on the 9.4h stage. A100 40GB.
+# This is the run the stop/go gate is decided on (see PROJECT_PLAN.md).
+# Sweep variants: copy this file, change one thing, change output_dir.
+output_dir: runs/lora_10h_r32
+seed: 42
+
+data:
+  train_manifest: manifests/syspin_10h/train.csv
+  val_manifest: manifests/syspin_10h/val.csv
+  max_frames_per_batch: 38400   # ~410 s of audio per batch; halve for a 24GB card
+  max_samples_per_batch: 48
+  num_workers: 8
+
+model:
+  vocab_file: checkpoints/IndicF5/checkpoints/vocab.txt
+  base_checkpoint: checkpoints/IndicF5/model.safetensors
+  arch: {dim: 1024, depth: 22, heads: 16, ff_mult: 2, text_dim: 512, conv_layers: 4}
+
+lora:
+  rank: 32
+  alpha: 32
+  dropout: 0.0
+  target_modules:
+    - 'transformer\.transformer_blocks\.\d+\.attn\.(to_q|to_k|to_v|to_out\.0)'
+    - 'transformer\.transformer_blocks\.\d+\.ff\.ff\.(0\.0|2)'
+  # Variant B of the sweep: the text embedding is where character-to-sound mapping lives,
+  # so this is the first thing to try if pronunciation barely moves.
+  extra_trainable: []
+  # extra_trainable: ['transformer\.text_embed\..*']
+
+optim:
+  learning_rate: 1.0e-4
+  weight_decay: 0.0
+  warmup_updates: 800           # ~10% of max_updates
+  max_updates: 8000             # ~96 epochs over 9.4h; checkpoints every 1000 so it can be cut short
+  grad_accumulation_steps: 1
+  max_grad_norm: 1.0
+  mixed_precision: bf16
+  ema_decay: 0.999
+
+logging:
+  log_every: 25
+  val_every: 500
+  sample_every: 1000
+  save_every: 1000
+  keep_last: 4
+
+sampling:
+  num_per_speaker: 2
+  nfe_step: 32
+  cfg_strength: 2.0
+  sway_sampling_coef: -1.0
