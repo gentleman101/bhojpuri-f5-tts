@@ -34,10 +34,11 @@ mkdir -p "$RUN_DIR"
 ENV="cd $ROOT && source .venv/bin/activate"
 tmux new-session -d -s "$SESSION" -n trainer \
   "$ENV && python scripts/train_lora.py --config $CONFIG $EXTRA 2>&1 | tee -a $RUN_DIR/train.log; echo '[trainer exited — press enter]'; read"
-tmux new-window -t "$SESSION" -n dashboard "$ENV && python scripts/dashboard.py --port $DASH_PORT"
-tmux new-window -t "$SESSION" -n uploader \
+tmux new-window -t "$SESSION:" -n dashboard "$ENV && python scripts/dashboard.py --port $DASH_PORT"
+tmux new-window -t "$SESSION:" -n uploader \
   "$ENV && export HF_HUB_DISABLE_PROGRESS_BARS=1 && python scripts/push_checkpoints.py --run $RUN_DIR --repo $HF_REPO 2>&1 | tee -a $RUN_DIR/push.log; echo '[uploader exited — press enter]'; read"
-tmux new-window -t "$SESSION" -n shell "$ENV"
+tmux new-window -t "$SESSION:" -n shell
+tmux send-keys -t "$SESSION:shell" "$ENV" Enter   # a command argument would close the window as soon as it finished
 tmux select-window -t "$SESSION:trainer"
 
 echo "Started tmux session '$SESSION' (trainer, dashboard, uploader, shell) for $CONFIG"
