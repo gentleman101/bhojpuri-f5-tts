@@ -34,7 +34,7 @@ Target machine is an A100 40GB with 16 cores, so configs ship with `max_frames_p
 
 ## State as of 2026-09-19
 
-Done: data downloaded and prepared, diagnostics built, weights verified, CPU baseline generated, all code tested end to end on CPU. Nothing has trained on a GPU yet.
+Done: data downloaded and prepared, diagnostics built, weights verified, CPU baseline generated, all code tested end to end on CPU and on the A100 (probe, overfit check, uploader, resume-from-HF, monitoring rehearsal). No real training run has started yet.
 
 | Thing | Where | Notes |
 |---|---|---|
@@ -43,7 +43,7 @@ Done: data downloaded and prepared, diagnostics built, weights verified, CPU bas
 | IndicF5 weights | `checkpoints/IndicF5/` | 1.4 GB, gitignored, gated download |
 | Manifests | `manifests/syspin_{slice,10h,full}/` | in git — 1.9h / 9.4h / 90.7h train |
 | Diagnostics | `manifests/diagnostics.json` | 32 held-out sentences, 8 contrasts |
-| CPU baseline audio | `runs/baseline/` | stock IndicF5, gitignored |
+| Stock baseline audio | `runs/eval/baseline_stock/` | 32 diagnostic clips, GPU run 2026-09-19 (2 min), gitignored |
 
 ## Fresh-machine bootstrap (empty disk)
 
@@ -93,8 +93,8 @@ Anything less means clips are missing, and the manifests reference files that ar
 
 ## Next steps (in order)
 
-1. **Probe**: 50 updates on the slice, record seconds/update and peak VRAM, then set batch size.
-2. **Sanity**: `python scripts/train_lora.py --config configs/lora_slice.yaml --overfit-one-batch 200` — loss must fall.
+1. ~~Probe~~ done: 0.44 s/update, 27.9 GB peak at 38,400 frames — keep the batch size.
+2. ~~Sanity~~ done: overfit-one-batch 200 falls 0.75 to 0.60.
 3. **Slice run** on `configs/lora_slice.yaml` — pipeline check only; 1.9h is below the quality cliff.
 4. **10h sweep**: baseline, then `extra_trainable: text_embed`, then rank 64/16, then lr variants.
 5. **Stop/go gate**: `scripts/eval_diagnostics.py` vs the stock baseline. Only scale to 90.7h if it improves.
@@ -105,6 +105,7 @@ Anything less means clips are missing, and the manifests reference files that ar
 ./scripts/run_training.sh configs/lora_10h.yaml [--resume latest]   # tmux: trainer + dashboard + HF uploader (attach: tmux attach -t train)
 python scripts/train_lora.py --config configs/lora_slice.yaml [--resume latest]
 python scripts/push_checkpoints.py --run runs/<run> --repo gentleman101/bhojpuri-f5-tts   # private HF repo; full resumable checkpoints
+python scripts/check_training.py [--snapshot out.html]   # health check: exit 1 on WARN. Run on each monitoring tick, then republish the artifact
 python scripts/dashboard.py --port 8080      # live loss/ETA/GPU page; ssh -L 8080:localhost:8080 <box>; reads runs/*/metrics.jsonl
 python scripts/eval_diagnostics.py --name baseline_stock                 # stock model
 python scripts/eval_diagnostics.py --name lora_10h --adapter runs/<run>/checkpoints/step_0002000
@@ -127,7 +128,17 @@ Verified facts (don't re-derive): IndicF5 is 337,096,804 params; its checkpoint 
 the vocoder bundled in the checkpoint is bit-identical to stock `charactr/vocos-mel-24khz`.
 LoRA r=32 on 132 layers = 10,092,544 trainable params (2.99%). CPU inference ran at RTF ~29.
 
+## Measured on the A100 (2026-09-19)
+
+Slice config, real batches (38,400 frames): **0.44 s/update**, **27.9 GB peak VRAM** (of 40), 155 MB per checkpoint
+(trainable 40 + EMA 40 + optimizer 81). 200-step overfit check passes (loss 0.75 to 0.60). Uploader and resume-from-HF both
+verified end to end. Monitoring artifact: https://claude.ai/artifact/8fz6hmA6o2bBS2xn3GQwyL — regenerate with
+`check_training.py --snapshot F` and republish F to that URL.
+
 ## Gotchas
+
+- `check_training.py` detects a dead trainer/uploader from the python processes, not tmux's `pane_current_command` (reports `bash` even while running).
+- `push_checkpoints.py` polls every 120 s and uploads only the newest checkpoint, so a very short run can finish before its first upload.
 
 - IndicF5's tokenizer maps unknown characters to index 0, which is **space** — silently. All current Bhojpuri text is covered (checked), but re-run `check_vocab.py` after any text change.
 - Mel settings live once in `bhojpuri_tts/data.py` (`MEL_KWARGS`). Training and inference must use identical values or output is garbage.

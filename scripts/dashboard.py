@@ -38,6 +38,7 @@ select{background:var(--card);color:var(--fg);border:1px solid var(--line);borde
 canvas{width:100%;height:190px;display:block}h2{font-size:13px;margin:0 0 6px}
 table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:3px 8px;border-bottom:1px solid var(--line)}
 .wrap{overflow-x:auto}audio{height:28px;width:220px}
+.planned{color:var(--mut)}.you{color:var(--d)}td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
 </style></head><body>
 <header><h1>Bhojpuri LoRA training <span id="status" class="badge"></span></h1>
 <label>Run <select id="run"></select></label></header>
@@ -45,7 +46,9 @@ table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:3px 8px;
 <div class="card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><b id="prog"></b><span id="eta" class="s"></span></div>
 <div class="bar"><i id="barfill" style="width:0"></i></div></div>
 <div class="grid" id="tiles" style="margin-top:12px"></div>
-<div class="charts" id="charts"></div>
+<div class="card" id="plan" style="margin-top:12px"><h2>Estimated timeline — whole plan</h2><div class="wrap" id="plantable"></div>
+<div class="s" id="plannote" style="margin-top:6px"></div></div>
+<div class="charts" id="charts" style="margin-top:12px"></div>
 <div class="card" id="samplecard" style="margin-top:12px"><h2>Samples (listen by step — judge tone and prosody by ear)</h2><div class="wrap" id="samples"></div></div>
 <script>
 const $=id=>document.getElementById(id);
@@ -69,6 +72,35 @@ function chart(cv,pts,color){
   if(pts.length<40){g.fillStyle=css(color);pts.forEach(p=>{g.beginPath();g.arc(X(p[0]),Y(p[1]),2.5,0,7);g.fill()})}
 }
 function tile(k,v,s){return `<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s||""}</div></div>`}
+// Whole-plan estimate. 0.44 s/update was measured on the A100 with real batches (probe, 27.9 GB peak); a running
+// run's own median replaces it. Only the 10h config's 8,000 updates is decided; the other update counts are assumptions.
+const SPU0=0.44;
+const PLAN=[
+ {n:"Stock baseline on 32 diagnostic clips",done:1,t:120},
+ {n:"Probe, 200-step overfit check, uploader test",done:1,t:180},
+ {n:"Slice run (1.9h, pipeline check)",run:"lora_slice_r32",up:3000},
+ {n:"Diagnostics on the slice checkpoint",t:120},
+ {n:"10h run: baseline config",run:"lora_10h_r32",up:8000},
+ {n:"10h sweep: text embedding unfrozen",up:8000},
+ {n:"10h sweep: rank 64",up:8000},
+ {n:"10h sweep: rank 16",up:8000},
+ {n:"10h sweep: learning-rate variants (2 runs)",up:16000,assume:1},
+ {n:"Diagnostics for the 6 sweep checkpoints",t:720},
+ {n:"Stop/go gate: diagnostics + native-speaker listening",manual:1},
+ {n:"Full 90.7h run (only if the gate passes)",up:30000,assume:1}];
+function plan(cur,tr,last,spuNow){
+  const spu=isFinite(spuNow)?spuNow:SPU0;let toGate=0,afterGate=0,gated=false,rows="";
+  PLAN.forEach(p=>{let secs=0,state="planned",label="planned",est;
+    if(p.done){state=label="done";est="took "+fmt(p.t)}
+    else if(p.manual){state="you";label="your call";est="human step";gated=true}
+    else if(p.t){secs=p.t;est="~"+fmt(secs)}
+    else if(p.run&&p.run===cur&&last){const fin=last.kind=="done",u=tr.length?tr[tr.length-1].update:0;
+      secs=fin?0:Math.max(p.up-u,0)*spu;state=label=fin?"done":"running";est=fin?"done":"~"+fmt(secs)+" left"}
+    else{secs=p.up*spu;est="~"+fmt(secs)+(p.assume?" (assumed)":"")}
+    if(!p.manual){if(gated)afterGate+=secs;else toGate+=secs}
+    rows+=`<tr><td>${p.n}</td><td class="n">${p.up?p.up.toLocaleString()+" updates":""}</td><td class="n">${est}</td><td><span class="badge ${state}">${label}</span></td></tr>`});
+  $("plantable").innerHTML="<table>"+rows+"</table>";
+  $("plannote").textContent=`Remaining to the stop/go gate ≈ ${fmt(toGate)}; the full run adds ≈ ${fmt(afterGate)} if the gate passes. Based on ${spu.toFixed(2)} s/update ${isFinite(spuNow)?"(this run)":"(measured on the A100)"}. Excludes model loading and time spent waiting on you; update counts other than the 10h config's are assumptions.`}
 let gpu={},recs=[],cur="";
 async function loadRuns(){
   const runs=await (await fetch("/api/runs")).json();const sel=$("run");
@@ -78,16 +110,16 @@ async function loadRuns(){
   cur=sel.value;
 }
 async function tick(){
-  try{await loadRuns();if(!cur){$("prog").textContent="No runs with metrics.jsonl yet — start train_lora.py";return}
+  try{await loadRuns();if(!cur){$("prog").textContent="No runs with metrics.jsonl yet — start train_lora.py";plan("",[],null,NaN);return}
   const [d,gp]=await Promise.all([fetch("/api/run?name="+encodeURIComponent(cur)).then(r=>r.json()),fetch("/api/gpu").then(r=>r.json())]);
   recs=d;gpu=gp;render()}catch(e){$("status").textContent="dashboard offline";$("status").className="badge stalled"}
 }
 function render(){
   const tr=recs.filter(r=>r.kind=="train"),va=recs.filter(r=>r.kind=="val"),ck=recs.filter(r=>r.kind=="checkpoint");
   const st=[...recs].reverse().find(r=>r.kind=="start"),last=recs[recs.length-1],lt=tr[tr.length-1];
-  if(!last){return}
+  if(!last){plan(cur,[],null,NaN);return}
   const max=(st&&st.max_updates)||(lt&&lt.max_updates)||0,upd=lt?lt.update:(st?st.update:0);
-  const recent=tr.slice(-10).map(r=>r.sec_per_update),spu=med(recent);
+  const recent=tr.slice(-10).map(r=>r.sec_per_update),spu=med(recent);plan(cur,tr,last,spu);
   const rem=Math.max(max-upd,0),eta=rem*spu,age=Date.now()/1000-last.t,done=last.kind=="done"||(max&&upd>=max);
   const stalled=!done&&age>Math.max(180,(lt?lt.sec_per_update*60:0));
   $("status").textContent=done?"finished":stalled?"stopped / stalled":"running";$("status").className="badge "+(done?"done":stalled?"stalled":"running");
@@ -163,18 +195,18 @@ def list_samples(name: str) -> list[dict]:
 SNAPSHOT_JS = r"""
 Date.now=()=>SNAP.at*1000;
 window.fetch=async u=>{const p=new URL(u,"http://x").pathname,j=v=>({json:async()=>v});
-  return p==="/api/runs"?j([SNAP.run]):p==="/api/run"?j(SNAP.records):p==="/api/gpu"?j(SNAP.gpu):j([])};
+  return p==="/api/runs"?j(SNAP.run?[SNAP.run]:[]):p==="/api/run"?j(SNAP.records):p==="/api/gpu"?j(SNAP.gpu):j([])};
 document.getElementById("snapnote").hidden=false;
-document.getElementById("snapnote").textContent="Snapshot taken "+new Date(SNAP.at*1000).toLocaleString()+" — republished periodically, not live. Audio samples are only in the live dashboard.";
+document.getElementById("snapnote").textContent="Snapshot taken "+new Date(SNAP.at*1000).toLocaleString()+" — republished periodically, not live. Audio samples are only in the live dashboard."+(SNAP.note?" "+SNAP.note:"");
 document.getElementById("samplecard").hidden=true;
 """
 
 
-def build_snapshot(run: str, out: Path):
+def build_snapshot(run: str, out: Path, note: str = ""):
     import re
     import time
 
-    data = dict(at=time.time(), run=run, records=read_metrics(run), gpu=gpu_status())
+    data = dict(at=time.time(), run=run, records=read_metrics(run) if run else [], gpu=gpu_status(), note=note)
     style = re.search(r"<style>(.*?)</style>", PAGE, re.S).group(1)
     body = re.search(r"<body>(.*)</body>", PAGE, re.S).group(1)
     shim = "<script>window.SNAP=" + json.dumps(data).replace("</", "<\\/") + ";" + SNAPSHOT_JS + "</script>"
@@ -228,15 +260,14 @@ if __name__ == "__main__":
     parser.add_argument("--snapshot", type=Path, metavar="OUT.html",
                         help="write a self-contained snapshot page for --run (default: newest run) and exit")
     parser.add_argument("--run", help="run name for --snapshot")
+    parser.add_argument("--note", default="", help="extra line for --snapshot, e.g. Claude's last monitor check")
     args = parser.parse_args()
     if args.snapshot:
         runs = sorted((p.parent.name for p in RUNS.glob("*/metrics.jsonl")),
                       key=lambda n: (RUNS / n / "metrics.jsonl").stat().st_mtime, reverse=True)
-        run = args.run or (runs[0] if runs else "")
-        if not run:
-            raise SystemExit("no runs with metrics.jsonl yet")
-        build_snapshot(run, args.snapshot)
-        print(f"wrote {args.snapshot} for run {run}")
+        run = args.run or (runs[0] if runs else "")  # no run yet is fine: the page then shows the plan only
+        build_snapshot(run, args.snapshot, args.note)
+        print(f"wrote {args.snapshot} for run {run or '(none yet)'}")
         raise SystemExit(0)
     print(f"Dashboard on http://{args.host}:{args.port}  (runs dir: {RUNS})")
     ThreadingHTTPServer((args.host, args.port), Handler).serve_forever()
