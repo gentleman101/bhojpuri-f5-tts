@@ -40,7 +40,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--run", required=True, type=Path, help="run directory, e.g. runs/lora_10h_r32")
     parser.add_argument("--repo", required=True, help="HF repo id, created private if missing")
-    parser.add_argument("--interval", type=int, default=120, help="seconds between checks")
+    parser.add_argument("--interval", type=int, default=60, help="seconds between checks")
+    parser.add_argument("--once", action="store_true", help="upload the newest checkpoint if it is missing, then exit")
     parser.add_argument("--dry-run", action="store_true", help="print what would be uploaded; touch nothing on the Hub")
     args = parser.parse_args()
 
@@ -84,6 +85,8 @@ def main():
                   "WARNING: trainer finished but no complete checkpoint was found — nothing pushed; exiting", flush=True)
             return
         if args.dry_run and step:
+            return
+        if args.once:
             return
         time.sleep(args.interval)
 

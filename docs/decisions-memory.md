@@ -5,10 +5,10 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 438d9374-a5b8-4112-a149-169dc114c78c
-  modified: 2026-09-19T09:48:54.711Z
+  modified: 2026-09-21T12:00:00.000Z
 ---
 
-Personal, self-funded learning project at `/home/ubuntu/bhojpuri-f5-tts` (full plan in `PROJECT_PLAN.md` there). Goal: fine-tune IndicF5 (F5-TTS architecture, ~330M params) for zero-shot voice cloning in Bhojpuri, then distill to a smaller student model.
+Personal, self-funded learning project at `/home/bhojpuri-f5-tts` (full plan in `PROJECT_PLAN.md` there). Goal: fine-tune IndicF5 (F5-TTS architecture, ~330M params) for zero-shot voice cloning in Bhojpuri, then distill to a smaller student model.
 
 Frozen decisions:
 - Base model: IndicF5, fine-tuned via LoRA only (no full fine-tune).
@@ -19,7 +19,7 @@ Frozen decisions:
 - Stop/go gate (added 2026-09-19): fine-tuning must beat the stock IndicF5 baseline on the 32-sentence diagnostic set after the 10h run, or the full ~91h run is not paid for — fall back to distilling from stock IndicF5, which keeps the deliverable intact. Stock IndicF5 already handles Bhojpuri decently (IN-F5 paper, arXiv 2505.20693, MUSHRA 82 from 1h of synthetic Bhojpuri), so gains must be shown, not assumed.
 - Data ladder: syspin_slice 1.9h (pipeline check only), syspin_10h 9.4h (hyperparameter sweep + the gate), syspin_full 90.7h (final run). Follows the IN-F5 finding that 10h ≈ 100h when trained longer, while 1h collapses.
 - Evaluation: 32-sentence diagnostic set covering Bhojpuri-vs-Hindi pronunciation contrasts (व→ब, श/ष→स, ण→न, avagraha, verb endings, retained final vowels), all pinned out of training; MUSHRA-style listening tests rather than 1-5 MOS because differences are small; community Bhojpuri ASR calibrated on real recordings for relative CER.
-- Infra: single JarvisLabs VM, launched as CPU for dev, resumed as GPU (A100/L4) for training runs, paused when idle. No separate filesystem/multi-machine setup — priced out as unnecessary for this sequential workflow. Only code/configs/manifests get git-pushed as backup; audio/checkpoints never leave the instance (wallet-hits-$0 wipes storage, so this is the real risk being hedged).
+- Infra: single JarvisLabs VM, launched as CPU for dev, resumed as GPU (A100/L4) for training runs, paused when idle. **Only `/home` survives a pause/resume — `/` (incl. `/root`) is reset; the project once lived in `/root` and was wiped (2026-09-21).** Everything lives under `/home/bhojpuri-f5-tts` + `/home/assets`. Backups: code to GitHub after every meaningful change; checkpoints auto-uploaded to private HF model repo `gentleman101/bhojpuri-f5-tts` (60 s poll, save every 1000 updates); processed clips (14.8 GiB) in private HF dataset repo `gentleman101/bhojpuri-syspin-24k`. Before any pause run `scripts/pre_pause_check.py --fix`; recovery is `scripts/bootstrap.sh` + `scripts/pull_run.py` (CLAUDE.md has the runbook). No separate filesystem/multi-machine setup.
 
 **Why:** These are the frozen scope boundaries the user already worked through — don't re-litigate them (e.g. don't suggest quantization, streaming, or multi-machine setups) unless the user reopens that decision.
 **How to apply:** When helping with this project, assume these choices are settled; focus effort on implementation within this scope. Phased plan (in PROJECT_PLAN.md) starts with running pretrained IndicF5 end-to-end before touching Bhojpuri-specific work.

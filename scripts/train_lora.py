@@ -153,6 +153,14 @@ def main():
     n_total = sum(p.numel() for p in model.parameters())
     print(f"LoRA on {len(targets)} linear layers; trainable {n_trainable:,} / {n_total:,} ({100 * n_trainable / n_total:.2f}%)")
 
+    perf = cfg.get("perf", {})  # optional speed switches, all off unless set in the config
+    if perf.get("tf32"):
+        torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = True
+    if perf.get("cudnn_benchmark"):
+        torch.backends.cudnn.benchmark = True
+    if perf.get("compile"):  # compile the forward only, so parameter names (checkpoints, EMA) stay unchanged
+        model.transformer.forward = torch.compile(model.transformer.forward, dynamic=True)
+
     (out_dir / "adapter_config.json").write_text(
         json.dumps(dict(arch=model_cfg["arch"], lora=lora_cfg, vocab_file=model_cfg["vocab_file"],
                         base_checkpoint=model_cfg.get("base_checkpoint")), indent=2)

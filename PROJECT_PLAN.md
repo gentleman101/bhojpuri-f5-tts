@@ -95,11 +95,11 @@ One instance, one machine ID, for the entire project. No separate filesystem res
 **How it works:**
 
 1. **Launch one instance as CPU** for all development — writing/testing preprocessing scripts, building the SYSPIN manifest, data cleaning. Cheap, no GPU meter running.
-2. **Pause whenever you step away** — `jl instance pause <machine_id>`. Billing drops to storage-only immediately. Resume later and everything under `/home` is exactly as you left it.
+2. **Pause whenever you step away** — but first run `python scripts/pre_pause_check.py --fix`, and pause only on `SAFE TO PAUSE`. `jl instance pause <machine_id>` drops billing to storage-only. Resume later and **only `/home`** is as you left it: `/` (including `/root`) is a container layer that is reset to a fresh image on resume — this destroyed the whole project once (2026-09-21) when it lived in `/root`. The project, venv, weights and processed clips therefore live under `/home` (see CLAUDE.md, "Where things live").
 3. **When ready to train, resume the same instance as GPU** — `jl instance resume <machine_id> --gpu A100` (or L4). Same machine ID, same data, no transfer step. This is a native, documented feature (confirmed: `instance.resume(gpu_type=..., num_gpus=1, storage=...)` in their SDK).
 4. **Pause again immediately after each training run** — switch back to CPU or fully pause once Phase 3, 4, or 6's run finishes.
-5. **`git push` code periodically as backup insurance** — protects against the one real failure mode (wallet hits $0 → all data, including storage, is wiped and unrecoverable). Push scripts/configs/manifests only — never audio or checkpoints.
-6. **Download the final checkpoint** via `jl instance download` or scp once there's something worth running locally (e.g. for demos via `f5-tts-mlx` on a Mac, if that's ever wanted) — otherwise everything, including inference, can stay on the same instance.
+5. **Back everything up on a fixed cadence** (details and the recovery runbook in CLAUDE.md): code to GitHub after every meaningful change (never >30 min uncommitted); checkpoints to a private Hugging Face model repo automatically, polled every 60 s after each save (every 1000 updates, ~7 min on the 10h config); the processed clips to a private HF dataset repo once. The failure modes this covers: a pause/resume resetting `/root`, and the wallet hitting $0 (which wipes all storage). GitHub gets code/configs/manifests only — audio and checkpoints go to Hugging Face, never GitHub.
+6. **Download the final checkpoint** from the HF model repo (`scripts/pull_run.py`), `jl instance download` or scp once there's something worth running locally (e.g. for demos via `f5-tts-mlx` on a Mac, if that's ever wanted) — otherwise everything, including inference, can stay on the same instance.
 
 ---
 

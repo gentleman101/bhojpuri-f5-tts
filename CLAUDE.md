@@ -5,30 +5,9 @@ Read `PROJECT_PLAN.md` for frozen decisions and the stop/go gate; `docs/LEARNING
 
 ## First thing on a GPU machine
 
-The venv was built with **CPU PyTorch**. Reinstall the CUDA build before training:
-
-```bash
-cd ~/bhojpuri-f5-tts
-source .venv/bin/activate
-uv pip install torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121
-python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
-```
-
-If `.venv` is missing entirely (fresh disk), rebuild it. `requirements-lock.txt` pins the exact
-versions that were verified working on CPU:
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-cd ~/bhojpuri-f5-tts
-uv venv --python 3.10 .venv && source .venv/bin/activate
-git clone https://github.com/AI4Bharat/IndicF5.git third_party/IndicF5
-uv pip install torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121
-uv pip install -r requirements-lock.txt
-uv pip install -e third_party/IndicF5 --no-deps && uv pip install -e . --no-deps
-```
-
-Install torch from the CUDA index *first*; the lock file lists plain `torch==2.5.1`, which would
-otherwise pull the CPU wheel from PyPI.
+Run `./scripts/bootstrap.sh` (idempotent; see the recovery runbook below). It builds `.venv` with **CUDA** PyTorch 2.5.1 installed *before*
+`requirements-lock.txt` (the lock lists plain `torch==2.5.1`, which would otherwise pull the CPU wheel), fetches the weights and clips,
+and prints `torch ... cuda True <GPU name>` when it is ready. Check that line before training.
 
 Target machine is an A100 40GB with 16 cores, so configs ship with `max_frames_per_batch: 38400` and `num_workers: 8`. Halve the batch on a 24 GB card. `mixed_precision: bf16` needs Ampere or newer (use `fp16` on V100/T4).
 
@@ -66,52 +45,55 @@ baseline regenerated, slice run finished (3000 updates, val 0.6194; checkpoints 
 | Diagnostics | `manifests/diagnostics.json` | 32 held-out sentences, 8 contrasts |
 | Stock baseline audio | `runs/eval/baseline_stock/` | 32 diagnostic clips, GPU run 2026-09-19 (2 min), gitignored |
 
-## Fresh-machine bootstrap (empty disk)
+## Backup policy — what is pushed where, and how often
 
-Code comes back from git; data, weights and credentials do not. Run in this order — steps 1–3 need the user.
-**Do not put the project under `/root` — see "Where things live" above; use `/home/bhojpuri-f5-tts`.** The code derives its own
-paths, so the repo works from any location. In the commands below `~` means the `/home` layout, and for step 1 use
-`git config core.sshCommand` as described above instead of `~/.ssh/config`.
+Rule: **nothing exists only on this machine.** Anything on `/` (including `/root`) is lost on pause/resume; a wallet at $0 wipes
+everything. Four homes, each with a cadence:
 
-**0. Clear any partial copy first.** An aborted scp leaves truncated files that look valid — a half-written
-WAV still opens, and a partly-copied `data/` silently trains on fewer clips. Inspect, then delete:
+| What | Home | Cadence | Automated by |
+|---|---|---|---|
+| Code, configs, manifests, docs | GitHub `gentleman101/bhojpuri-f5-tts` | **Commit + push after every meaningful change**, always before starting or ending a run, never more than ~30 min of uncommitted work | you/Claude (`git push`); `pre_pause_check.py` fails on unpushed work |
+| Training checkpoints (trainable + EMA + optimizer, ~155 MB each) + `metrics.jsonl`, `config.yaml`, `adapter_config.json`, samples | HF **model** repo `gentleman101/bhojpuri-f5-tts` (private), under `<run>/` | Trainer saves every `save_every` updates (1000 = ~7 min on the 10h config, 500 on slice); uploader polls every **60 s**, so at most ~8 min of training is ever unbacked-up. All checkpoints are kept on HF; local disk keeps the last `keep_last` (4) | `scripts/push_checkpoints.py` (started by `run_training.sh`); `check_training.py` warns if a checkpoint is >15 min un-uploaded |
+| Processed 24 kHz clips (53,155 WAVs, 14.8 GiB, 37 tar shards + `index.json` with sha256) | HF **dataset** repo `gentleman101/bhojpuri-syspin-24k` (private, CC-BY-4.0 attribution to IISc in its card) | Pushed once (2026-09-21); immutable. Re-pack and re-push (`scripts/pack_data.py`, then upload `/home/assets/shards`) **only if the manifests or the processing change** | manual; restore verified byte-identical on 2026-09-21 |
+| Eval outputs (`runs/eval/*`) | nowhere — regenerable in ~2 min each | — | — |
 
+**Before ANY pause, resume, delete or handover: `python scripts/pre_pause_check.py --fix`.** It checks GitHub and Hugging Face
+themselves (not local markers), pushes what is missing, and prints `SAFE TO PAUSE` or `NOT SAFE`. Do not pause on `NOT SAFE`.
+
+## Recovery runbook — regain everything on an empty machine
+
+`/home` survives a pause, so first look there (`ls /home/bhojpuri-f5-tts /home/assets`). If it is empty (new instance, or `/home` lost):
+
+1. **GitHub access — the only step that needs the user.** Make a key, add its *public* half at GitHub → repo → Settings → Deploy keys
+   (tick *Allow write access*), then clone **into `/home`** and pin the key to the repo (no `~/.ssh/config`, that lives in the wiped `/root`):
+   ```bash
+   export HOME=/home; mkdir -p /home/.ssh && chmod 700 /home/.ssh
+   ssh-keygen -t ed25519 -N "" -C "bhojpuri-f5-tts-deploy" -f /home/.ssh/bhojpuri_f5_tts_deploy
+   cat /home/.ssh/bhojpuri_f5_tts_deploy.pub          # add this at GitHub; if copying from a terminal fails, SendUserFile it or paste from an artifact page
+   SSHC="ssh -i /home/.ssh/bhojpuri_f5_tts_deploy -o IdentitiesOnly=yes -o UserKnownHostsFile=/home/.ssh/known_hosts -o StrictHostKeyChecking=accept-new"
+   GIT_SSH_COMMAND="$SSHC" git clone git@github.com:gentleman101/bhojpuri-f5-tts.git /home/bhojpuri-f5-tts
+   cd /home/bhojpuri-f5-tts && git config core.sshCommand "$SSHC" && git config user.name "Naman" && git config user.email "50843800+gentleman101@users.noreply.github.com"
+   ```
+   Never use `gh auth login` or a broad token for this; the deploy key is the scoped credential.
+2. **Hugging Face token (user, once):** `hf auth login` in a real terminal with a **write** token (fine-grained: write on the two repos is enough).
+   The token is stored under `/home/.cache/huggingface`, so it normally survives.
+3. **`./scripts/bootstrap.sh`** — idempotent. Builds `.venv` (CUDA torch first), downloads the IndicF5 weights, restores the 53,155 clips from the HF dataset
+   repo (sha256-verified, ~2 min), and checks the manifests match git. About 10 minutes in total; it needs no SYSPIN download links.
+4. **Resume a run:** `python scripts/pull_run.py <run>` (newest checkpoint, ~12 s), then
+   `./scripts/run_training.sh runs/<run>/config.yaml --resume latest`.
+5. **Monitoring** (optional): re-create the cron/loop that runs `check_training.py --snapshot` and republishes the artifact.
+
+**Last resort — the HF dataset repo is also gone.** Rebuild from the raw corpus (needs fresh links; the 2026-09-17 batch expires 2026-09-24):
+raw archives go on `/root` (fast, disposable, only needed to make the clips), the processed clips on `/home`:
 ```bash
-du -sh ~/bhojpuri-f5-tts/* 2>/dev/null          # what actually landed
-find ~ -maxdepth 3 -name 'bhojpuri*' -o -maxdepth 3 -name 'syspin*' 2>/dev/null
-rm -rf ~/bhojpuri-f5-tts                        # only if it holds nothing but a partial copy
+./scripts/download_syspin.sh "<female_url>" "<male_url>"      # ~4 min download + ~4 min extract at ~200 MB/s; run it with data/syspin -> /root/syspin_raw
+python scripts/prepare_syspin.py --name syspin_slice --exclude-file manifests/diagnostics_exclude.txt --train-hours-per-speaker 1
+python scripts/prepare_syspin.py --name syspin_10h   --exclude-file manifests/diagnostics_exclude.txt --train-hours-per-speaker 5
+python scripts/prepare_syspin.py --name syspin_full  --exclude-file manifests/diagnostics_exclude.txt      # ~20 s total; one torch thread per worker
 ```
-
-Never keep a partial `data/processed/`: `find data/processed -name '*.wav' | wc -l` must equal **53155**.
-Anything less means clips are missing, and the manifests reference files that are not there.
-
-1. **Repo access.** The old SSH deploy key is gone. Make a new one and add it at GitHub → repo → Settings → Deploy keys (tick *Allow write access*):
-   ```bash
-   ssh-keygen -t ed25519 -N "" -C "bhojpuri-f5-tts-deploy" -f ~/.ssh/bhojpuri_f5_tts_deploy
-   cat ~/.ssh/bhojpuri_f5_tts_deploy.pub
-   printf '\nHost github-bhojpuri-f5-tts\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/bhojpuri_f5_tts_deploy\n  IdentitiesOnly yes\n' >> ~/.ssh/config
-   git clone git@github-bhojpuri-f5-tts:gentleman101/bhojpuri-f5-tts.git ~/bhojpuri-f5-tts
-   git -C ~/bhojpuri-f5-tts config user.name "Naman"
-   git -C ~/bhojpuri-f5-tts config user.email "50843800+gentleman101@users.noreply.github.com"
-   ```
-2. **Weights** (gated; terms already accepted on the account): `hf auth login` in a real terminal, then
-   `hf download ai4bharat/IndicF5 --local-dir checkpoints/IndicF5`.
-3. **Corpus** — links are personal, time-limited and not in git. Either reuse the two wget URLs from the
-   SYSPIN email, or request fresh ones at https://spiredatasets.ee.iisc.ac.in/syspincorpus (Bhojpuri,
-   Female + Male, Human Checked). Then:
-   ```bash
-   ./scripts/download_syspin.sh "<female_url>" "<male_url>"     # ~10 min at 200 MB/s
-   ```
-4. **Rebuild the three manifests** (~25 min, mostly resampling 53k clips):
-   ```bash
-   python scripts/prepare_syspin.py --name syspin_full  --exclude-file manifests/diagnostics_exclude.txt
-   python scripts/prepare_syspin.py --name syspin_10h   --exclude-file manifests/diagnostics_exclude.txt --train-hours-per-speaker 5
-   python scripts/prepare_syspin.py --name syspin_slice --exclude-file manifests/diagnostics_exclude.txt --train-hours-per-speaker 1
-   ```
-   Splits are seeded, so these reproduce the manifests already in git. Confirm with `git status` — the
-   manifest files should come back unchanged. **`manifests/diagnostics.json` is already in git; do not
-   rebuild it**, or the held-out sentences change and the baseline stops being comparable.
-5. **Disk**: needs ~70 GB for raw + processed + weights. Check before downloading.
+Splits are seeded, so `git status manifests` must come back clean. **`manifests/diagnostics.json` is in git; never rebuild it**, or the held-out sentences
+change and the baseline stops being comparable. `find data/processed -name '*.wav' | wc -l` must equal **53155** (never keep a partial copy — an aborted scp
+leaves truncated WAVs that still open). Then run `scripts/pack_data.py` and re-upload so the dataset backup exists again.
 
 ## Next steps (in order)
 
@@ -126,7 +108,13 @@ Anything less means clips are missing, and the manifests reference files that ar
 ```bash
 ./scripts/run_training.sh configs/lora_10h.yaml [--resume latest]   # tmux: trainer + dashboard + HF uploader (attach: tmux attach -t train)
 python scripts/train_lora.py --config configs/lora_slice.yaml [--resume latest]
-python scripts/push_checkpoints.py --run runs/<run> --repo gentleman101/bhojpuri-f5-tts   # private HF repo; full resumable checkpoints
+python scripts/push_checkpoints.py --run runs/<run> --repo gentleman101/bhojpuri-f5-tts [--once]   # private HF repo; full resumable checkpoints; polls every 60 s
+python scripts/pre_pause_check.py [--fix]   # RUN BEFORE ANY PAUSE: verifies GitHub + HF have everything
+python scripts/pull_run.py <run>            # newest HF checkpoint back into runs/<run>, ready for --resume latest
+./scripts/bootstrap.sh                      # idempotent full rebuild/health check of the environment, weights and data
+python scripts/restore_data.py              # 53,155 clips back from the HF dataset repo
+python scripts/pack_data.py                 # re-pack clips into HF-ready tar shards
+python scripts/compare_eval.py baseline_stock lora_slice   # pitch/spectrum vs real recordings
 python scripts/check_training.py [--snapshot out.html]   # health check: exit 1 on WARN. Run on each monitoring tick, then republish the artifact
 python scripts/dashboard.py --port 8080      # live loss/ETA/GPU page; ssh -L 8080:localhost:8080 <box>; reads runs/*/metrics.jsonl
 python scripts/eval_diagnostics.py --name baseline_stock                 # stock model
@@ -137,13 +125,14 @@ python scripts/check_vocab.py --vocab checkpoints/IndicF5/checkpoints/vocab.txt 
 
 ## Links and facts worth not losing
 
-- Repo: `git@github-bhojpuri-f5-tts:gentleman101/bhojpuri-f5-tts.git` (private).
+- Repo: `git@github.com:gentleman101/bhojpuri-f5-tts.git` (private; deploy key pinned via the repo's `core.sshCommand`, see the runbook).
+- HF model repo (checkpoints): https://huggingface.co/gentleman101/bhojpuri-f5-tts (private). HF dataset repo (clips): https://huggingface.co/datasets/gentleman101/bhojpuri-syspin-24k (private).
 - Weights: https://huggingface.co/ai4bharat/IndicF5 (gated, terms already accepted on the account).
 - Corpus request form: https://spiredatasets.ee.iisc.ac.in/syspincorpus — Bhojpuri, Female + Male, Human Checked. Links emailed, valid 7 days. The batch fetched on 2026-09-17 expires 2026-09-24.
 - Listening-test page (private artifact): https://claude.ai/artifact/NWutZVsd8xYoHVqQKZbUoC — real recording vs. stock model, shared with native speakers for feedback. Needs link sharing enabled from its share menu.
 - Base-model paper (IN-F5 = IndicF5): https://arxiv.org/abs/2505.20693 — data ladder, Bhojpuri zero-resource result (MUSHRA 82 from 1h synthetic), and their hyperparameters.
-- `docs/decisions-memory.md` mirrors the cross-session memory note. On a new machine, copy it to
-  `~/.claude/projects/-root/memory/project_bhojpuri_tts.md` and add a one-line pointer in that folder's `MEMORY.md`.
+- `docs/decisions-memory.md` mirrors the cross-session memory note. On a new machine, copy it to the project's Claude memory folder
+  (`/home/.claude/projects/<project-dir>/memory/project_bhojpuri_tts.md`; the folder name follows the directory Claude is started in) and add a one-line pointer in that folder's `MEMORY.md`.
 
 Verified facts (don't re-derive): IndicF5 is 337,096,804 params; its checkpoint uses the prefix
 `ema_model._orig_mod.`; its vocab is 2,545 entries and covers **every** Bhojpuri character in SYSPIN;
@@ -160,11 +149,14 @@ verified end to end. Monitoring artifact: https://claude.ai/artifact/8fz6hmA6o2b
 ## Gotchas
 
 - `check_training.py` detects a dead trainer/uploader from the python processes, not tmux's `pane_current_command` (reports `bash` even while running).
-- `push_checkpoints.py` polls every 120 s and uploads only the newest checkpoint, so a very short run can finish before its first upload.
+- `push_checkpoints.py` polls every 60 s and uploads only the newest checkpoint, so a very short run can finish before its first upload; `pre_pause_check.py --fix` catches that.
+- `prepare_syspin.py` workers must use one torch thread each (now built in). Without it, many workers x 16 threads each thrash the CPU (28 clips/s vs ~2,500).
+- `pkill -f <pattern>` from a tool call matches its own command line and kills the shell — kill by PID instead.
+- Killing a training run leaves orphaned `pt_data_worker` processes holding GPU memory; kill them too before starting the next run.
 
 - IndicF5's tokenizer maps unknown characters to index 0, which is **space** — silently. All current Bhojpuri text is covered (checked), but re-run `check_vocab.py` after any text change.
 - Mel settings live once in `bhojpuri_tts/data.py` (`MEL_KWARGS`). Training and inference must use identical values or output is garbage.
 - The checkpoint bundles a Vocos vocoder identical to stock `charactr/vocos-mel-24khz` (verified, max diff 0.0), so loading Vocos separately is correct.
 - Diagnostic clips are pinned out of training via `manifests/diagnostics_exclude.txt`. If you rebuild diagnostics, re-run `prepare_syspin.py` with that file and re-verify no leakage.
 - Flow-matching loss is noisy and plateaus early. Judge checkpoints by listening and by the diagnostic set, not by loss.
-- Adapter checkpoints are small (tens of MB); only weights/data are large. Push code often — if the JarvisLabs wallet hits $0 the disk is wiped.
+- Adapter checkpoints are ~155 MB with optimizer state. If the JarvisLabs wallet hits $0 the disk is wiped; the backup policy above is what makes that survivable.
