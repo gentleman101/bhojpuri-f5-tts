@@ -6,6 +6,7 @@ prepare a 1-hour slice or the full corpus. Processed audio is shared across runs
 
 import argparse
 import json
+import os
 import random
 import unicodedata
 from collections import Counter
@@ -35,6 +36,12 @@ def trim_silence(wav: np.ndarray, sr: int, top_db: float, margin_s: float) -> np
     start = max(voiced[0] * frame - margin, 0)
     end = min((voiced[-1] + 1) * frame + margin, len(wav))
     return wav[start:end]
+
+
+def _one_thread():
+    # Each worker would otherwise start one torch thread per core; 14 workers x 16 threads thrashed the CPU
+    # (28 clips/s) where one thread each does the whole corpus in ~20 s.
+    torch.set_num_threads(1)
 
 
 def process_clip(job: tuple[str, str, float, float]) -> float:
@@ -86,7 +93,7 @@ def main():
     parser.add_argument("--max-duration", type=float, default=20.0)
     parser.add_argument("--trim-top-db", type=float, default=40.0)
     parser.add_argument("--trim-margin", type=float, default=0.15)
-    parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--workers", type=int, default=max((os.cpu_count() or 2) - 1, 1))
     parser.add_argument("--seed", type=int, default=1234)
     args = parser.parse_args()
 
@@ -125,7 +132,7 @@ def main():
     for item in all_items:
         item["dst"] = processed_dir / item["speaker"] / f"{item['utt_id']}.wav"
     jobs = [(str(x["src"]), str(x["dst"]), args.trim_top_db, args.trim_margin) for x in all_items]
-    with ProcessPoolExecutor(args.workers) as pool:
+    with ProcessPoolExecutor(args.workers, initializer=_one_thread) as pool:
         durations = list(tqdm(pool.map(process_clip, jobs, chunksize=16), total=len(jobs), desc="Resampling"))
 
     char_counts: Counter = Counter()

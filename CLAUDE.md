@@ -32,15 +32,36 @@ otherwise pull the CPU wheel from PyPI.
 
 Target machine is an A100 40GB with 16 cores, so configs ship with `max_frames_per_batch: 38400` and `num_workers: 8`. Halve the batch on a 24 GB card. `mixed_precision: bf16` needs Ampere or newer (use `fp16` on V100/T4).
 
-## State as of 2026-09-19
+## Where things live — READ THIS (lost everything once on 2026-09-21)
 
-Done: data downloaded and prepared, diagnostics built, weights verified, CPU baseline generated, all code tested end to end on CPU and on the A100 (probe, overfit check, uploader, resume-from-HF, monitoring rehearsal). No real training run has started yet.
+**On JarvisLabs only `/home` survives a pause/resume.** `/` (including `/root`) is a container layer that is reset to a
+fresh image. On 2026-09-19 the repo, venv, corpus, processed clips and weights all sat in `/root/bhojpuri-f5-tts` and were
+wiped by a pause/resume; only GitHub and the Hugging Face checkpoints survived. Everything now lives under `/home`:
+
+| Path | What | Persists? |
+|---|---|---|
+| `/home/bhojpuri-f5-tts/` | repo + `.venv` (5.8 GB) | yes |
+| `/home/assets/checkpoints/` | IndicF5 weights (repo `checkpoints` is a symlink to it, hidden via `.git/info/exclude`) | yes |
+| `/home/assets/data/processed/` | 15 GB processed clips (repo `data/processed` symlink) | yes |
+| `/root/syspin_raw/` | raw corpus, 48 GB (repo `data/syspin` symlink) — only needed to rebuild processed clips | **no, on purpose** |
+| `/home/assets/*.sh`, `logs/` | rebuild scripts (`dl_corpus.sh`, `build_env.sh`, `prep_full.sh`) | yes |
+
+Note that `/home` is 100 GB. Git uses the deploy key `/home/.ssh/bhojpuri_f5_tts_deploy` via the repo's own `core.sshCommand`
+(remote is plain `git@github.com:`), so there is no dependence on `/root/.ssh/config`. Hugging Face token: `/home/.cache/huggingface`.
+Rebuilding from nothing takes ~20 min now: corpus download (~4 min) + extract (~4 min) + weights (seconds) + venv (~3 min) +
+`prepare_syspin.py` for all three manifests (~1 min with one torch thread per worker).
+
+## State as of 2026-09-21
+
+Done: data rebuilt and verified (53,155 WAVs, manifests byte-identical to git), diagnostics built, weights verified, stock
+baseline regenerated, slice run finished (3000 updates, val 0.6194; checkpoints on HF), slice adapter beat stock on pitch/spectrum
+(`scripts/compare_eval.py`). Not yet done: native-speaker listening, the 10h run, the stop/go gate.
 
 | Thing | Where | Notes |
 |---|---|---|
-| Raw SYSPIN corpus | `data/syspin/` | 48 GB, gitignored |
-| Processed 24 kHz clips | `data/processed/syspin_24k/` | 15 GB, gitignored |
-| IndicF5 weights | `checkpoints/IndicF5/` | 1.4 GB, gitignored, gated download |
+| Raw SYSPIN corpus | `data/syspin/` → `/root/syspin_raw` | 48 GB, gitignored, ephemeral |
+| Processed 24 kHz clips | `data/processed/syspin_24k/` → `/home/assets/data/processed` | 15 GB, gitignored |
+| IndicF5 weights | `checkpoints/IndicF5/` → `/home/assets/checkpoints` | 1.4 GB, gitignored, gated download |
 | Manifests | `manifests/syspin_{slice,10h,full}/` | in git — 1.9h / 9.4h / 90.7h train |
 | Diagnostics | `manifests/diagnostics.json` | 32 held-out sentences, 8 contrasts |
 | Stock baseline audio | `runs/eval/baseline_stock/` | 32 diagnostic clips, GPU run 2026-09-19 (2 min), gitignored |
@@ -48,8 +69,9 @@ Done: data downloaded and prepared, diagnostics built, weights verified, CPU bas
 ## Fresh-machine bootstrap (empty disk)
 
 Code comes back from git; data, weights and credentials do not. Run in this order — steps 1–3 need the user.
-Paths here use `~`; on the GPU box that is `/root`, not `/home/ubuntu`. The code derives its own paths, so
-the repo works from any location.
+**Do not put the project under `/root` — see "Where things live" above; use `/home/bhojpuri-f5-tts`.** The code derives its own
+paths, so the repo works from any location. In the commands below `~` means the `/home` layout, and for step 1 use
+`git config core.sshCommand` as described above instead of `~/.ssh/config`.
 
 **0. Clear any partial copy first.** An aborted scp leaves truncated files that look valid — a half-written
 WAV still opens, and a partly-copied `data/` silently trains on fewer clips. Inspect, then delete:
