@@ -117,7 +117,7 @@ Anything less means clips are missing, and the manifests reference files that ar
 
 1. ~~Probe~~ done: 0.44 s/update, 27.9 GB peak at 38,400 frames — keep the batch size.
 2. ~~Sanity~~ done: overfit-one-batch 200 falls 0.75 to 0.60.
-3. **Slice run** on `configs/lora_slice.yaml` — pipeline check only; 1.9h is below the quality cliff.
+3. ~~Slice run~~ done (3000 updates, val 0.6194) — pipeline check only; 1.9h is below the quality cliff.
 4. **10h sweep**: baseline, then `extra_trainable: text_embed`, then rank 64/16, then lr variants.
 5. **Stop/go gate**: `scripts/eval_diagnostics.py` vs the stock baseline. Only scale to 90.7h if it improves.
 
