@@ -76,9 +76,9 @@ function chart(cv,pts,color,o){o=o||{};
   if(pts.length<40){g.fillStyle=css(color);pts.forEach(p=>{g.beginPath();g.arc(X(p[0]),Y(p[1]),2.5,0,7);g.fill()})}
 }
 function tile(k,v,s){return `<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s||""}</div></div>`}
-// Whole-plan estimate. 0.44 s/update was measured on the A100 with real batches (probe, 27.9 GB peak); a running
+// Whole-plan estimate. 0.25 s/update was measured on the A100 with real batches and torch.compile (0.43 eager; 27.9 GB peak); a running
 // run's own median replaces it. Only the 10h config's 8,000 updates is decided; the other update counts are assumptions.
-const SPU0=0.44;
+const SPU0=0.25;
 const PLAN=[
  {n:"Stock baseline on 32 diagnostic clips",done:1,t:120},
  {n:"Probe, 200-step overfit check, uploader test",done:1,t:180},
@@ -89,6 +89,7 @@ const PLAN=[
  {n:"10h sweep: rank 64",up:8000},
  {n:"10h sweep: rank 16",up:8000},
  {n:"10h sweep: learning-rate variants (2 runs)",up:16000,assume:1},
+ {n:"Compile warm-up, ~6 min per run x 6 runs",t:2160},
  {n:"Diagnostics for the 6 sweep checkpoints",t:720},
  {n:"Stop/go gate: diagnostics + native-speaker listening",manual:1},
  {n:"Full 90.7h run (only if the gate passes)",up:30000,assume:1}];
@@ -100,11 +101,11 @@ function plan(cur,tr,last,spuNow){
     else if(p.t){secs=p.t;est="~"+fmt(secs)}
     else if(p.run&&p.run===cur&&last){const fin=last.kind=="done",u=tr.length?tr[tr.length-1].update:0;
       secs=fin?0:Math.max(p.up-u,0)*spu;state=label=fin?"done":"running";est=fin?"done":"~"+fmt(secs)+" left"}
-    else{secs=p.up*spu;est="~"+fmt(secs)+(p.assume?" (assumed)":"")}
+    else{secs=p.up*SPU0;est="~"+fmt(secs)+(p.assume?" (assumed)":"")}  // stages not started yet use the compiled speed, not the displayed run's
     if(!p.manual){if(gated)afterGate+=secs;else toGate+=secs}
     rows+=`<tr><td>${p.n}</td><td class="n">${p.up?p.up.toLocaleString()+" updates":""}</td><td class="n">${est}</td><td><span class="badge ${state}">${label}</span></td></tr>`});
   $("plantable").innerHTML="<table>"+rows+"</table>";
-  $("plannote").textContent=`Remaining to the stop/go gate ≈ ${fmt(toGate)}; the full run adds ≈ ${fmt(afterGate)} if the gate passes. Based on ${spu.toFixed(2)} s/update ${isFinite(spuNow)?"(this run)":"(measured on the A100)"}. Excludes model loading and time spent waiting on you; update counts other than the 10h config's are assumptions.`}
+  $("plannote").textContent=`Remaining to the stop/go gate ≈ ${fmt(toGate)}; the full run adds ≈ ${fmt(afterGate)} if the gate passes. Not-yet-started runs use ${SPU0.toFixed(2)} s/update (torch.compile, measured on the A100; 0.43 without it). Excludes model loading and time spent waiting on you; update counts other than the 10h config's are assumptions.`}
 let gpu={},recs=[],cur="";
 async function loadRuns(){
   const runs=await (await fetch("/api/runs")).json();const sel=$("run");

@@ -50,3 +50,8 @@ sampling:
   nfe_step: 32
   cfg_strength: 2.0
   sway_sampling_coef: -1.0
+
+# Measured 2026-09-21 on the A100: 0.244 s/update compiled vs 0.43 eager (1.8x). Same validation loss at update 500
+# (0.6744 vs 0.6749). Costs ~6 min of one-off compile per run (slow first step + two recompiles), so it pays for runs >~2,000 updates.
+perf:
+  compile: true

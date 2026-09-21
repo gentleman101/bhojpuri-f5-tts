@@ -139,6 +139,14 @@ Verified facts (don't re-derive): IndicF5 is 337,096,804 params; its checkpoint 
 the vocoder bundled in the checkpoint is bit-identical to stock `charactr/vocos-mel-24khz`.
 LoRA r=32 on 132 layers = 10,092,544 trainable params (2.99%). CPU inference ran at RTF ~29.
 
+## Speed: torch.compile (2026-09-21)
+
+`perf: {compile: true}` in a config compiles only the transformer's forward (parameter names, checkpoints and EMA are unchanged).
+Measured on the slice config: **0.244 s/update vs 0.43 eager (1.8x)**; validation loss at update 500 is the same (0.6744 vs 0.6749; 0.6876 vs 0.6894 at 250).
+Cost: ~6 min one-off per run (76 s first step + two recompiles around updates ~50 and ~300), and a persistent Inductor cache did **not** remove it, so it
+pays off for runs of more than ~2,000 updates. `configs/lora_10h.yaml` has it on. No gain from TF32/cuDNN-benchmark (already bf16). The GPU is compute-bound
+(96-99% util), so data loading is not the bottleneck and running two jobs at once would not help. Estimated: 10h run ~40 min instead of ~57.
+
 ## Measured on the A100 (2026-09-19)
 
 Slice config, real batches (38,400 frames): **0.44 s/update**, **27.9 GB peak VRAM** (of 40), 155 MB per checkpoint
