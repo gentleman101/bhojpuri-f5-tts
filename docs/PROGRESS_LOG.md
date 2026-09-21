@@ -30,7 +30,7 @@ Credentials live only in `/home`: the GitHub deploy key `/home/.ssh/bhojpuri_f5_
 
 1. **Persistence test (this settles the incident).** Two marker files were written just before the pause:
    `cat /root/PAUSE_MARKER.txt /home/PAUSE_MARKER.txt`  (both say `Mon Sep 21 12:20:00 UTC 2026`).
-   Record which one survived by appending a line to section 6 of this file. Expected if the theory is right: `/home` survives, `/root` does not.
+   Record which one survived by appending a line to section 6 of this file. Expected (the vendor says so): `/home` survives, `/root` does not.
 2. `ls /home/bhojpuri-f5-tts /home/assets`. If present: `cd /home/bhojpuri-f5-tts && ./scripts/bootstrap.sh` (idempotent health check, ~5 s when nothing is missing), then
    `python scripts/pre_pause_check.py` (expects SAFE). If `/home` is empty: follow the recovery runbook in `CLAUDE.md` (needs the user for the GitHub deploy key).
 3. If `/home` survived but `data/syspin` points at the now-missing `/root/syspin_raw`, that is fine — nothing reads it after the clips exist.
@@ -88,7 +88,7 @@ uploaded 14:01):
 
 **2026-09-21 ~10:24 — INCIDENT.** After a pause/resume, `/root/bhojpuri-f5-tts` (repo, `.venv`, 48 GB corpus, 15 GB processed clips, weights, `runs/`) was gone; `/root` had reverted to its fresh
 image (files dated May 5, recreated `/root/.ssh`, `.cache`). `/home` (a separate 100 GB volume, `/dev/rbd1`) survived. The other VM (which had held the original copy) had already been deleted.
-A full-filesystem search found no corpus, WAV or weight file anywhere. Root cause (strongly supported, not vendor-confirmed): **JarvisLabs resets `/` on pause/resume; only `/home` persists**, and the project lived in `/root`.
+A full-filesystem search found no corpus, WAV or weight file anywhere. Root cause, **confirmed by the vendor**: the JarvisLabs pause dialog states "Data stored outside the /home directory will be lost when the instance stops" (screenshot 2026-09-21). **Only `/home` persists**, and the project lived in `/root`. Paused storage is billed at $0.00014/GB/hour (100 GB is ~$0.34/day, so a $16.70 wallet covers ~50 days paused; at $0 everything is wiped).
 No command in the shell history or of mine deleted it (my `rm -rf` calls were all on named `runs/*` subfolders). tmux cannot move files.
 
 **2026-09-21 recovery (~1 h, mostly waiting on the GitHub key).** The deploy key was no longer accepted by GitHub; getting the public key out of a terminal failed (Mac + Windows keyboard), so it went
@@ -109,7 +109,8 @@ CLAUDE.md, PROJECT_PLAN.md and the memory note corrected; `torch.compile` evalua
 - Monitoring artifact (snapshot, republished by Claude): https://claude.ai/artifact/8fz6hmA6o2bBS2xn3GQwyL. Native-speaker listening page: https://claude.ai/artifact/NWutZVsd8xYoHVqQKZbUoC.
   Deploy-key copy page: https://claude.ai/artifact/SUGqTZfF3FBYrDD1xTUc4j (public key only).
 - Claude memory notes: `/home/.claude/projects/-root-bhojpuri-f5-tts/memory/` (`jarvislabs-only-home-persists`, `user-cannot-copy-from-terminal`). `docs/decisions-memory.md` mirrors the project note.
-- Environment: Python 3.10, torch 2.5.1+cu121, A100-PCIE-40GB, 16 cores, 503 GB RAM. `/home` is 100 GB (24 GB used).
+- Environment: Python 3.10, torch 2.5.1+cu121, A100-PCIE-40GB, 16 cores, 112 GB RAM (the JarvisLabs console; `free` inside the container shows the host's 503 GB). `/home` is 100 GB (24 GB used).
+- JarvisLabs instance `bhojpuri-gpu`, Machine ID 511241, region IN2, 1 x A100, type Container. Wallet was $16.70 on 2026-09-21 16:33 (phone clock).
 - Scripts: `bootstrap.sh`, `pre_pause_check.py`, `pull_run.py`, `pack_data.py`, `restore_data.py`, `run_training.sh`, `push_checkpoints.py`, `check_training.py`, `dashboard.py`,
   `eval_diagnostics.py`, `compare_eval.py`, `prepare_syspin.py`, `train_lora.py`, `scripts/dev/*` (compile equivalence check, JS runtime test for the dashboard page).
 
