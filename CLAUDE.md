@@ -30,11 +30,13 @@ Note that `/home` is 100 GB. Git uses the deploy key `/home/.ssh/bhojpuri_f5_tts
 Rebuilding from nothing takes ~20 min now: corpus download (~4 min) + extract (~4 min) + weights (seconds) + venv (~3 min) +
 `prepare_syspin.py` for all three manifests (~1 min with one torch thread per worker).
 
+**Full history, results, incident report, open decisions and the post-resume checklist: `docs/PROGRESS_LOG.md` (read it first after any pause).**
+
 ## State as of 2026-09-21
 
 Done: data rebuilt and verified (53,155 WAVs, manifests byte-identical to git), diagnostics built, weights verified, stock
 baseline regenerated, slice run finished (3000 updates, val 0.6194; checkpoints on HF), slice adapter beat stock on pitch/spectrum
-(`scripts/compare_eval.py`). Not yet done: native-speaker listening, the 10h run, the stop/go gate.
+(`scripts/compare_eval.py`). Not yet done: native-speaker listening, the 10h run (compile on, ~40 min), the stop/go gate. Instance was paused right after this state; nothing running.
 
 | Thing | Where | Notes |
 |---|---|---|
