@@ -51,7 +51,7 @@ Code in this repository is [MIT-licensed](LICENSE). Model weights and data are C
 ## Quickstart
 
 ```bash
-git clone git@github.com:gentleman101/bhojpuri-f5-tts.git && cd bhojpuri-f5-tts
+git clone https://github.com/gentleman101/bhojpuri-f5-tts.git && cd bhojpuri-f5-tts
 ./scripts/bootstrap.sh                              # health check
 python scripts/pull_run.py lora_10h_r32             # fetch the trained checkpoint from HF
 ./scripts/run_training.sh configs/lora_10h.yaml --resume latest   # or start your own run
