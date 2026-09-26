@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" width="96" alt="Bhojpuri LoRA logo">
+  <img src="assets/logo.gif" width="96" alt="Bhojpuri-F5-TTS mascot, speaking">
 </p>
 
 <h1 align="center">Bhojpuri-F5-TTS</h1>
