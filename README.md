@@ -2,8 +2,8 @@
   <img src="assets/logo.png" width="96" alt="Bhojpuri LoRA logo">
 </p>
 
-<h1 align="center">Bhojpuri F5-TTS</h1>
-<p align="center">LoRA fine-tuning (and, eventually, distillation) of <a href="https://huggingface.co/ai4bharat/IndicF5">IndicF5</a> for zero-shot Bhojpuri voice cloning.</p>
+<h1 align="center">Bhojpuri-F5-TTS</h1>
+<p align="center">LoRA fine-tuned (and, eventually, distilled) from <a href="https://huggingface.co/ai4bharat/IndicF5">IndicF5</a> for zero-shot Bhojpuri voice cloning.</p>
 
 <p align="center">
   <a href="https://huggingface.co/gentleman101/bhojpuri-f5-tts"><img alt="model" src="https://img.shields.io/badge/🤗%20model-bhojpuri--f5--tts-blue"></a>
